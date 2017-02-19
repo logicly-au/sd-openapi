@@ -1,14 +1,8 @@
 package SD::OpenAPI::Loader;
 use 5.24.0;
 use Moo;
+extends 'SD::OpenAPI';
 use Function::Parameters qw(:strict);
-
-our $VERSION = '0.0.1';
-
-method version {
-    my $class = ref $self || $self;
-    return eval "\$${class}::VERSION";
-}
 
 with 'SD::OpenAPI::Role::Swagger2', 'SD::OpenAPI::Role::FileGenerator';
 

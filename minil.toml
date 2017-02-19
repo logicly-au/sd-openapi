@@ -1,2 +1,5 @@
-name = "SD-OpenAPI-Loader"
+name = "SD-OpenAPI"
 module_maker="ModuleBuildTiny"
+script_files = ['script/*']
+[release]
+  do_not_upload_to_cpan=true
