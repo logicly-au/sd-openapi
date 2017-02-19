@@ -1,0 +1,4 @@
+Minilla
+MooX::Options
+JSON::Validator
+YAML::XS
