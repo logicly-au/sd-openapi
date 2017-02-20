@@ -1,0 +1,72 @@
+{
+   "abstract" : "Strategic Data's OpenAPI utilities.",
+   "author" : [
+      "Strategic Data <support@strategicdata.com.au>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Minilla/v3.0.9, CPAN::Meta::Converter version 2.150005",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "SD-OpenAPI",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "xt",
+         "inc",
+         "share",
+         "eg",
+         "examples",
+         "author",
+         "builder"
+      ]
+   },
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "Module::Build::Tiny" : "0.035"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Test::CPAN::Meta" : "0",
+            "Test::MinimumVersion::Fast" : "0.04",
+            "Test::PAUSE::Permissions" : "0.04",
+            "Test::Pod" : "1.41",
+            "Test::Spellunker" : "v0.2.7"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Function::Parameters" : "0",
+            "JSON::Validator" : "0",
+            "MooX::Options" : "0",
+            "Path::Tiny" : "0",
+            "YAML::XS" : "0",
+            "perl" : "v5.24.0"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::More" : "0"
+         }
+      }
+   },
+   "release_status" : "unstable",
+   "resources" : {
+      "repository" : {
+         "type" : "git",
+         "url" : "git://gh.sdintra.net/StrategicData/SD-OpenAPI.git"
+      }
+   },
+   "version" : "0.0.1",
+   "x_contributors" : [
+      "Adam Clarke <adamc@strategicdata.com.au>",
+      "Adam Clarke <adam.clarke@strategicdata.com.au>"
+   ],
+   "x_serialization_backend" : "JSON::PP version 2.27300"
+}
