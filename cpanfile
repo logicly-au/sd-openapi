@@ -1,4 +1,4 @@
-requires 'perl', '5.024000';
+requires 'perl', '5.022000';
 
 use 5.24.0;
 

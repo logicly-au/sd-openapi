@@ -66,7 +66,8 @@
    "version" : "0.0.1",
    "x_contributors" : [
       "Adam Clarke <adamc@strategicdata.com.au>",
-      "Adam Clarke <adam.clarke@strategicdata.com.au>"
+      "Adam Clarke <adam.clarke@strategicdata.com.au>",
+      "Russell Jenkins <russell.jenkins@strategicdata.com.au>"
    ],
-   "x_serialization_backend" : "JSON::PP version 2.27300"
+   "x_serialization_backend" : "JSON::PP version 2.27300_01"
 }
