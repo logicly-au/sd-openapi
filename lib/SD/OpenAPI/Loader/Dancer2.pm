@@ -85,9 +85,22 @@ method _write_controller_stub( :$class, :$methods = [] ) {
               . qq|=head1 ROUTES\n\n|;
 
     for my $mth ( $methods->@* ) {
-        my ($method, $desc) = $mth->%*;
-        $content .= qq|=head2 $method\n\n$desc\n\n=cut\n\n|;
-        $content .= qq|route $method {\n\n# TODO\n\n}\n\n|;
+        $content .= <<"...";
+=head2 $mth->{method}
+
+\U$mth->{verb}\E '$mth->{route}'
+
+\u$mth->{description}
+
+=cut
+
+route $mth->{method} {
+
+    #TODO
+
+}
+
+...
     }
 
     $content .= "\n1;\n";
@@ -110,11 +123,19 @@ method _write_routes( :$routes ) {
     for my $route ( sort keys $routes->%* ) {
         for my $method ( sort keys $routes->{$route}->%* ) {
             next if $method eq 'options';
-            $controllers->{ $routes->{$route}{$method}{controller} } //= [];
-            push @{ $controllers->{ $routes->{$route}{$method}{controller} } },
-              + { $routes->{$route}{$method}{method} => $routes->{$route}{$method}{description} };
+
+            my $details = $routes->{$route}->{$method};
+
+            $controllers->{ $details->{controller} } //= [];
+            push($controllers->{ $details->{controller} }->@*, {
+                description => $details->{description},
+                method      => $details->{method},
+                route       => $route,
+                verb        => $method,
+            });
         }
     }
+
     for my $ctr ( sort keys $controllers->%* ) {
         $content .= qq|use $ctr;\n|;
         $self->_write_controller_stub(
