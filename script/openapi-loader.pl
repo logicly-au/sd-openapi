@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use 5.24.0;
+use 5.22.0;
 use Moo;
 use MooX::Options;
 

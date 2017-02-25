@@ -1,5 +1,5 @@
 package SD::OpenAPI::Loader::Dancer2;
-use 5.24.0;
+use 5.22.0;
 use Moo;
 extends 'SD::OpenAPI::Loader';
 use Function::Parameters qw(:strict);
@@ -39,13 +39,13 @@ method _parse_routes {
     my $paths = $self->spec->{paths};
 
     my $routes = {};
-    for my $p ( keys $paths->%* ) {
+    for my $p ( keys %$paths ) {
         # adapt OpenAPI syntax for URL path args to Dancer2 syntax
         # '/path/{argument}' => '/path/:argument/
         my $path = $p =~ s/\{([^{}]+?)\}/:$1/gr;
 
         my @http_options = ();
-        for my $m ( keys $paths->{$p}->%* ) {
+        for my $m ( keys %{ $paths->{$p} } ) {
             my $route_spec = $paths->{$p}{$m};
 
             my $http_method = $m;
@@ -78,7 +78,7 @@ method _parse_routes {
 }
 
 method _write_controller_stub( :$class, :$methods = [] ) {
-    my $content = qq|package $class;\nuse 5.24.0;\n|
+    my $content = qq|package $class;\nuse 5.22.0;\n|
                 . qq|use warnings;\nuse Function::Parameters {\n|
                 . qq|  fun => 'function_strict', method => 'method_strict',\n|
                 . qq|  route => { defaults => 'method', 'shift' => '\$app' }\n|
@@ -89,7 +89,7 @@ method _write_controller_stub( :$class, :$methods = [] ) {
     $content .= qq|=head1 NAME\n\n$class - a controller\n\n|
               . qq|=head1 ROUTES\n\n|;
 
-    for my $mth ( $methods->@* ) {
+    for my $mth ( @$methods ) {
         $content .= <<"...";
 =head2 $mth->{method}
 
@@ -120,19 +120,19 @@ method _write_routes( :$routes ) {
     my $class = $self->namespace . '::Routes';
 
     my $namespace = $self->namespace;
-    my $content = qq|package $class;\nuse 5.24.0;\n|
+    my $content = qq|package $class;\nuse 5.22.0;\n|
                 . qq|use Dancer2 appname => '$namespace';\n\n|;
 
     # Use all controllers
     my $controllers = {};
-    for my $route ( sort keys $routes->%* ) {
-        for my $method ( sort keys $routes->{$route}->%* ) {
+    for my $route ( sort keys %{ $routes } ) {
+        for my $method ( sort keys %{ $routes->{$route} }) {
             next if $method eq 'options';
 
             my $details = $routes->{$route}->{$method};
 
             $controllers->{ $details->{controller} } //= [];
-            push($controllers->{ $details->{controller} }->@*, {
+            push(@{ $controllers->{ $details->{controller} } }, {
                 description => $details->{description},
                 method      => $details->{method},
                 route       => $route,
@@ -141,7 +141,7 @@ method _write_routes( :$routes ) {
         }
     }
 
-    for my $ctr ( sort keys $controllers->%* ) {
+    for my $ctr ( sort keys %$controllers ) {
         $content .= qq|use $ctr;\n|;
         $self->_write_controller_stub(
             class   => $ctr,
@@ -188,20 +188,23 @@ method _write_routes( :$routes ) {
     } keys %$routes;
 
     for my $route ( @sorted_paths ) {
-        for my $method ( sort keys $routes->{$route}->%* ) {
+        for my $method ( sort keys %{ $routes->{$route} } ) {
             $content .= qq|$method '$route' => sub {\n|;
 
+            my $details = $routes->{$route}->{$method};
+
             if ($method eq 'options') {
-                my $allow = join( ",", sort $routes->{$route}{$method}{allow}->@* ) ;
+                my $allow = join( ",", sort @{ $details->{allow} } ) ;
                 $content .= qq|  response->header( 'Allow' => '$allow' );\n|
                          .  qq|  return;\n|
                          .  qq|};\n\n|;
                 next;
             }
 
-            $content .= $self->_required_params( $routes->{$route}{$method}{parameters} );
-            $content .= sprintf('  goto &%s::%s;', $routes->{$route}{$method}->@{ qw/controller method/ } )
-                . qq|\n};\n\n|;
+            $content .= $self->_required_params( $details->{parameters} );
+            $content .= sprintf('  goto &%s::%s;',
+                $details->{controller}, $details->{method} );
+            $content .= qq|\n};\n\n|;
         }
     }
 
@@ -243,7 +246,7 @@ method _required_params($parameters) {
     my $content = '';
 
     my $required = {};
-    for my $r ( grep { $_->{required} } $parameters->@* ) {
+    for my $r ( grep { $_->{required} } @$parameters ) {
         # TODO handle "schema" entries
 
         if ( exists $r->{schema} && $r->{schema}->{type} eq 'object' ) {
@@ -257,7 +260,7 @@ method _required_params($parameters) {
                   unless exists $type_map->{ $type };
 
                 $required->{ 'body' }{ $type } //= [];
-                push $required->{ 'body' }{ $type }->@*, $rq;
+                push @{ $required->{ 'body' }{ $type } }, $rq;
             }
         }
         else {
@@ -271,15 +274,15 @@ method _required_params($parameters) {
               unless exists $type_map->{ $r->{type} };
 
             $required->{ $r->{in} }{ $r->{type} } //= [];
-            push $required->{ $r->{in} }{ $r->{type} }->@*, $r->{name};
+            push(@{ $required->{ $r->{in} }{ $r->{type} } }, $r->{name});
         }
     }
-    if ( keys $required->%* ) {
+    if ( keys %$required ) {
         $content .= qq|  my \$errors = {};\n|;
-        for my $source ( sort keys $required->%* ) {
-            for my $type ( sort keys $required->{$source}->%* ) {
+        for my $source ( sort keys %$required ) {
+            for my $type ( sort keys %{ $required->{$source} } ) {
                 my $extra = $type_map->{$type};
-                for my $param ( sort $required->{$source}{$type}->@* ) {
+                for my $param ( sort @{ $required->{$source}{$type} } ) {
                     $content .= sprintf
                       '  { my @vals = $_[0]->request->%s(\'%s\'); @vals == 1 && %s or $errors->{\'%s\'}=\'Not specified in request %s\'; }',
                       $source_map->{$source}, $param, $extra, $param, $source;

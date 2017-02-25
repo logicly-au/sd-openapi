@@ -1,5 +1,5 @@
 package SD::OpenAPI;
-use 5.24.0;
+use 5.22.0;
 use Moo;
 use Function::Parameters qw(:strict);
 
