@@ -19,6 +19,11 @@ has 'namespace' => (
     required => 1,
 );
 
+has 'ignore_basepath' => (
+    is => 'ro',
+    default => 0,
+);
+
 method make_routes {
     $self->_write_routes(
         routes => $self->_parse_routes(),
@@ -145,9 +150,13 @@ method _write_routes( :$routes ) {
     }
     $content .= "\n";
 
-    my $prefix = $self->spec->{basePath};
-    if ( defined $prefix ) {
-        $content .= "prefix '$prefix' => sub {\n"
+    my $prefix;
+
+    if (! $self->ignore_basepath) {
+        $prefix = $self->spec->{basePath};
+        if ( defined $prefix ) {
+            $content .= "prefix '$prefix' => sub {\n"
+        }
     }
 
     # paths need to be sorted on alpha lower case

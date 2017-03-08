@@ -26,13 +26,20 @@ option location => (
     doc      => 'Location of generated code',
 );
 
+option ignore_basepath => (
+    is       => 'ro',
+    default  => 0,
+    doc      => 'Don\'t generate a prefix for the basepath',
+);
+
 sub run {
     my ($self) = @_;
 
     my $loader = SD::OpenAPI::Loader::Dancer2->new(
-      spec      => $self->file,
-      namespace => $self->namespace,
-      location  => $self->location,
+        spec      => $self->file,
+        namespace => $self->namespace,
+        location  => $self->location,
+        ignore_basepath => $self->ignore_basepath,
     );
 
     $loader->make_routes();
