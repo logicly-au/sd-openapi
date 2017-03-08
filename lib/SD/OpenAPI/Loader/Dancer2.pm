@@ -7,7 +7,7 @@ use Function::Parameters qw(:strict);
 use Carp qw(croak);
 use Data::Dumper;
 
-our $VERSION = '0.0.5';
+our $VERSION = '0.0.6';
 
 has 'location' => (
     is => 'ro',
