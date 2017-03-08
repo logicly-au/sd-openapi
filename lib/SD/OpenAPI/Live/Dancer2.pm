@@ -22,39 +22,10 @@ method make_app($app) {
     while (my ($path, $request) = each %$paths) {
         while (my ($method, $spec) = each %$request) {
 
-            if (!exists $spec->{operationId}) {
-                warn "No operationId for \"$method $path\" - skipping";
-                next;
-            }
+            my $metadata = $self->create_metadata($path, $method, $spec)
+                or next;
 
-            my $metadata;
-            if ($spec->{operationId} =~ /^(.*)::(.*)$/) {
-                $metadata = clone($spec);
-                $metadata->{module_name} = $1;
-                $metadata->{sub_name} = $2;
-            }
-            else {
-                warn "No module specified in $spec->{operationId} for \"$method $path\", skipping";
-                next;
-            }
-
-            $metadata->{swagger_path} = $path;
-            $metadata->{http_method} = $method;
-
-            $metadata->{dancer2_path} = $metadata->{swagger_path}
-                =~ s/\{ (.*?) \}/:$1/grx;
-
-            $metadata->{required_parameters} =
-                [ grep { $_->{required} } @{ $metadata->{parameters} } ];
-            $metadata->{optional_parameters} =
-                [ grep { !$_->{required} } @{ $metadata->{parameters} } ];
-
-            # Delete any empty parameter lists.
-            for my $list (qw( required_parameters optional_parameters )) {
-                delete $metadata->{$list} unless @{ $metadata->{$list} };
-            }
-
-            $self->_add_route($app, $metadata);
+            $self->add_route($app, $metadata);
 
             push(@{ $options{$path} }, uc $method);
             if ($method eq 'get') {
@@ -77,7 +48,43 @@ method make_app($app) {
     }
 }
 
-method _add_route($app, $metadata) {
+method create_metadata($path, $method, $spec) {
+    if (!exists $spec->{operationId}) {
+        warn "No operationId for \"$method $path\" - skipping\n";
+        return;
+    }
+
+    my $metadata;
+    if ($spec->{operationId} =~ /^(.*)::(.*)$/) {
+        $metadata = clone($spec);
+        $metadata->{module_name} = $1;
+        $metadata->{sub_name} = $2;
+    }
+    else {
+        warn "No module specified in $spec->{operationId} for \"$method $path\", skipping\n";
+        return;
+    }
+
+    $metadata->{swagger_path} = $path;
+    $metadata->{http_method}  = $method;
+
+    $metadata->{dancer2_path} = $metadata->{swagger_path}
+        =~ s/\{ (.*?) \}/:$1/grx;
+
+    $metadata->{required_parameters} =
+        [ grep { $_->{required} } @{ $metadata->{parameters} } ];
+    $metadata->{optional_parameters} =
+        [ grep { !$_->{required} } @{ $metadata->{parameters} } ];
+
+    # Delete any empty parameter lists.
+    for my $list (qw( required_parameters optional_parameters )) {
+        delete $metadata->{$list} unless @{ $metadata->{$list} };
+    }
+
+    return $metadata;
+}
+
+method add_route($app, $metadata) {
     my %args = (
         method => $metadata->{http_method},
         regexp => $metadata->{dancer2_path},
@@ -144,48 +151,59 @@ method make_handler($metadata) {
         say STDERR " --> $symbol";
     }
 
+    # Install type checkers for all the types.
+    my $default_type = 'string';
+    for my $p (@{ $metadata->{parameters} }) {
+        my $name = $p->{name};
+        if (! exists $p->{type}) {
+            warn " *** missing type for parameter \"$name\" - defaulting to $default_type\n";
+            $p->{type} = $default_type;
+        }
+        my $type = $p->{type};
+        if (! exists $type_check{$type}) {
+            warn " *** unexpected type \"$type\" for parameter \"$p->{name}\" - defaulting to $default_type\n";
+            $type = $default_type;
+        }
+        $p->{check} = $type_check{$type};
+    }
+
+    # Create a closure that wraps the custom handler in some parameter handling
+    # code.
     return sub {
         my ($app) = @_;
+
+        # Validate and coerce the parameters.
         my %params;
         my %errors;
-
         for my $p (@{ $metadata->{parameters} }) {
             my $get_param = $param_method{$p->{in}};
 
             my $name = $p->{name};
             my @vals = $app->request->$get_param->get_all($name);
 
-            if (@vals > 1) {
-                $errors{$name} =
-                    "parameter $name specified multiple times";
+            if (@vals != 1) {
+                my $message = @vals == 0 ? 'not specified'
+                                         : 'specified multiple times';
+                $errors{$name} = "parameter $name $message";
                 next;
             }
 
-            if (@vals == 0) {
-                if ($p->{required}) {
-                    $errors{$name} = "$p->{in} parameter $name not specified";
-                }
-                next;
-            }
-
-            my $type = $p->{type};
-            my $value = try {
-                $type_check{$type}->($vals[0]);
+            try {
+                $params{$name} = $p->{type_check}->($vals[0]);
             }
             catch {
                 chomp;
                 $errors{$name} = "must be $_";
             };
-            next unless defined $value;
-
-            $params{$name} = $value;
         }
 
+        # Bomb out if we had any errors.
         if (keys %errors) {
             $app->response->status(400);
             return { errors => \%errors };
         }
 
+        # Otherwise pass through the the actual handler.
         return $sub->($app, \%params, $metadata);
     }
 }
