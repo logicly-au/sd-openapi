@@ -4,8 +4,9 @@ use 5.22.0;
 use Moo;
 extends 'SD::OpenAPI::Live';
 
-use Clone       qw( clone );
-use Class::Load qw( load_class );
+use Clone                       qw( clone );
+use Class::Load                 qw( load_class );
+use DateTime::Format::RFC3339   qw( );
 use Try::Tiny;
 
 use Function::Parameters qw( :strict );
@@ -107,6 +108,9 @@ my %param_method = (
     query    => 'query_parameters',
 );
 
+my $datetime_parser = DateTime::Format::RFC3339->new;
+
+# http://swagger.io/specification/#data-types-12
 my %type_check = (
     integer => sub {
         if ($_[0] =~ /^[-+]?\d+$/) {
@@ -125,6 +129,14 @@ my %type_check = (
             return $_[0] != 0;
         }
         die "a boolean value (0 or 1)\n";
+    },
+    'date-time' => sub {
+        try {
+            $datetime_parser->parse_datetime($_[0]);
+        }
+        catch {
+            die "an RFC3331-formatted datetime string\n";
+        };
     },
 );
 
@@ -160,11 +172,14 @@ method make_handler($metadata) {
             $p->{type} = $default_type;
         }
         my $type = $p->{type};
-        if (! exists $type_check{$type}) {
+        my $format = $p->{format} // '<nothing>';
+
+        # First try the format first then the more-general type.
+        $p->{check} = $type_check{$format} // $type_check{$type};
+        if (! defined $p->{check}) {
             warn " *** unexpected type \"$type\" for parameter \"$p->{name}\" - defaulting to $default_type\n";
-            $type = $default_type;
+            $p->{check} = $type_check{$default_type};
         }
-        $p->{check} = $type_check{$type};
     }
 
     # Create a closure that wraps the custom handler in some parameter handling
