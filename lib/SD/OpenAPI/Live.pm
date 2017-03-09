@@ -7,6 +7,7 @@ use Moo;
 extends 'SD::OpenAPI';
 with 'SD::OpenAPI::Role::Swagger2';
 
+use Clone                qw( clone );
 use Function::Parameters qw( :strict );
 
 method BUILD {
@@ -14,6 +15,7 @@ method BUILD {
     $self->_validate_spec;
 
     _expand_references($self->spec, $self->spec->{definitions});
+    _expand_schemas($self->spec->{paths});
 }
 
 fun _expand_references($hash, $definition_for) {
@@ -36,6 +38,55 @@ fun _expand_references($hash, $definition_for) {
             }
         }
     }
+}
+
+fun _expand_schemas($paths) {
+    while (my ($path, $request) = each %$paths) {
+        while (my ($method, $spec) = each %$request) {
+            my @params;
+            for my $param (@{ $spec->{parameters} }) {
+                if (exists $param->{schema}) {
+                    _expand_schema($param);
+                }
+                push(@params, _expand_param($param));
+            }
+            $spec->{parameters} = \@params;
+        }
+    }
+}
+
+fun _expand_param($param) {
+    if ($param->{type} eq 'object') {
+        return _expand_object($param);
+    }
+    if ($param->{type} eq 'array') {
+        return _expand_array($param);
+    }
+    return $param;
+}
+
+fun _expand_object($param) {
+    my %required = map { $_ => 1 } @{ $param->{required} // [] };
+    while (my ($name, $property) = each %{ $param->{properties} }) {
+        $property = _expand_param($property);
+        $property->{name} = $name;
+        $property->{required} = 1 if $required{$name};
+    }
+    return $param;
+}
+
+fun _expand_array($param) {
+    $param->{items} = _expand_object($param->{items});
+    return $param;
+}
+
+fun _expand_schema($param) {
+    my $schema = $param->{schema};
+    for my $key (keys %$schema) {
+        delete $param->{$key}; # XXX: avoid read-only value error :/
+        $param->{$key} = $schema->{$key};
+    }
+    delete $param->{schema};
 }
 
 1;
