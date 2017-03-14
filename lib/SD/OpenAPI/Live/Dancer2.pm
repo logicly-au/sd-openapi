@@ -213,7 +213,7 @@ method make_handler($metadata) {
     say STDERR "$method $path";
     if (! defined $sub) {
         say STDERR "  ** NOT FOUND $symbol";
-        $sub = sub { return { errors => 'Unimplemented' } };
+        $sub = $self->unimplemented($metadata->{operationId});
     }
     else {
         say STDERR " --> $symbol";
@@ -274,6 +274,22 @@ method make_handler($metadata) {
 
         # Otherwise pass through the the actual handler.
         return $sub->($app, \%params, $metadata);
+    }
+}
+
+method unimplemented($sub_name) {
+    return fun($app, $params, $metadata) {
+        my $ret = {
+            errors => "Unimplemented handler $sub_name",
+            handler => $sub_name,
+            params => $params,
+            metadata => $metadata,
+        };
+
+        use Data::Dumper::Concise; print STDERR Dumper($ret);
+        $app->response->status(501);
+
+        return $ret;
     }
 }
 
