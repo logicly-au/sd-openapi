@@ -4,6 +4,7 @@ use 5.22.0;
 use Moo;
 extends 'SD::OpenAPI::Live';
 
+use Carp                        qw( croak );
 use Clone                       qw( clone );
 use Class::Load                 qw( load_class );
 use DateTime::Format::ISO8601   qw( );
@@ -13,7 +14,15 @@ use Function::Parameters qw( :strict );
 
 has 'namespace' => (
     is => 'ro',
-    required => 1,
+    default => method {
+        # Walk up the call stack until we find a package that isn't ours.
+        for (my $depth = 0; my $caller = caller($depth); $depth++) {
+            if ($caller ne __PACKAGE__) {
+                return $caller;
+            }
+        }
+        croak("Can't deduce namespace - please specify namespace");
+    },
 );
 
 method make_app($app) {
