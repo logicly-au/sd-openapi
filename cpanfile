@@ -10,6 +10,7 @@ requires $_ for qw(
     JSON::MaybeXS
     JSON::Validator
     List::UtilsBy
+    Log::Any
     Moo
     MooX::Options
     Path::Tiny

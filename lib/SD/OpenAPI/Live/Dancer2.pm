@@ -8,6 +8,7 @@ use Carp                        qw( croak );
 use Clone                       qw( clone );
 use Class::Load                 qw( load_class );
 use DateTime::Format::ISO8601   qw( );
+use Log::Any                    qw( $log );
 use Try::Tiny;
 
 use Function::Parameters qw( :strict );
@@ -28,6 +29,8 @@ has 'namespace' => (
 method make_app($app) {
     my $paths = $self->spec->{paths};
     my %options;
+
+    $log->info("Auto-generating dancer2 routes");
 
     while (my ($path, $request) = each %$paths) {
         while (my ($method, $spec) = each %$request) {
@@ -60,7 +63,7 @@ method make_app($app) {
 
 method create_metadata($path, $method, $spec) {
     if (!exists $spec->{operationId}) {
-        warn "No operationId for \"$method $path\" - skipping\n";
+        $log->error("No operationId for $method $path - skipping");
         return;
     }
 
@@ -71,7 +74,7 @@ method create_metadata($path, $method, $spec) {
         $metadata->{sub_name} = $2;
     }
     else {
-        warn "No module specified in $spec->{operationId} for \"$method $path\", skipping\n";
+        $log->error("No module specified in $spec->{operationId} for \"$method $path\", skipping");
         return;
     }
 
@@ -210,13 +213,13 @@ method make_handler($metadata) {
     my $path   = $metadata->{dancer2_path};
     my $method = $metadata->{http_method};
 
-    say STDERR "$method $path";
     if (! defined $sub) {
-        say STDERR "  ** NOT FOUND $symbol";
+        $log->error("Handler $symbol not found for $method $path");
         $sub = $self->unimplemented($metadata->{operationId});
     }
     else {
-        say STDERR " --> $symbol";
+        $log->info("$method $path");
+        $log->info(" --> $metadata->{module_name}::$metadata->{sub_name}");
     }
 
     # Install type checkers for all the types.
