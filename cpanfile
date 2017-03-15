@@ -1,10 +1,24 @@
 requires 'perl', '5.022000';
 
-requires 'MooX::Options';
-requires 'JSON::Validator';
-requires 'YAML::XS';
-requires "Function::Parameters";
-requires "Path::Tiny";
+requires $_ for qw(
+    Clone
+    Data::Dumper::Concise
+    DateTime::Format::RFC3339
+    Digest::MD5
+    File::ShareDir
+    Function::Parameters
+    JSON::MaybeXS
+    JSON::Validator
+    List::UtilsBy
+    Log::Any
+    Moo
+    MooX::Options
+    Path::Tiny
+    Template
+    Template::Plugin::DataPrinter
+    Try::Tiny
+    YAML::XS
+);
 
 on 'test' => sub {
     requires 'Test::More';
