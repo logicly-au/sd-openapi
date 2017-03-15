@@ -3,7 +3,7 @@ requires 'perl', '5.022000';
 requires $_ for qw(
     Clone
     Data::Dumper::Concise
-    DateTime::Format::RFC3339
+    DateTime::Format::ISO8601
     Digest::MD5
     File::ShareDir
     Function::Parameters
