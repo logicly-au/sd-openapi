@@ -75,7 +75,7 @@
          "url" : "git://gh.sdintra.net/StrategicData/SD-OpenAPI.git"
       }
    },
-   "version" : "0.0.1",
+   "version" : "0.0.7",
    "x_contributors" : [
       "Adam Clarke <adamc@strategicdata.com.au>",
       "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
