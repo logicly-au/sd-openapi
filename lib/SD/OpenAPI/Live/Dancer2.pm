@@ -122,58 +122,74 @@ my %param_method = (
 
 my $datetime_parser = DateTime::Format::ISO8601->new;
 
+fun failed($name, $type, $msg) {
+    if ($name ne '') {
+        $name .= '.';
+    }
+    $name .= $type->{name};
+    die { $name => $msg };
+}
+
 # http://swagger.io/specification/#data-types-12
 my %type_check;
 %type_check = (
     integer => sub {
-        if ($_[0] =~ /^[-+]?\d+$/) {
-            return int($_[0]);
+        my ($value, $type, $name) = @_;
+        if ($value =~ /^[-+]?\d+$/) {
+            return int($value);
         }
-        die "$_[1]->{name} an integer\n";
+        failed($name, $type, 'must be an integer');
     },
     string => sub {
-        if (length($_[0]) > 0) {
-            return "$_[0]";
+        my ($value, $type, $name) = @_;
+        if (length($value) > 0) {
+            return "$value";
         }
-        die "$_[1]->{name} a non-empty string\n";
+        failed($name, $type, 'must be a non-empty string');
     },
     boolean => sub {
-        if ($_[0] =~ /^0|1$/) {
-            return $_[0] != 0;
+        my ($value, $type, $name) = @_;
+        if ($value =~ /^0|1$/) {
+            return $value != 0;
         }
-        die "$_[1]->{name} a boolean value (0 or 1)\n";
+        failed($name, $type, "must be a boolean value (0 or 1)");
     },
     'date-time' => sub {
-        my $date = $_[0];
+        my ($value, $type, $name) = @_;
         try {
-            $datetime_parser->parse_datetime($date);
+            $value = $datetime_parser->parse_datetime($value);
         }
         catch {
-            die "an ISO8601-formatted datetime string <$date>\n";
+            failed($name, $type, "must be an ISO8601-formatted datetime string");
         };
+        return $value;
     },
     array => sub {
-        my ($value, $type) = @_;
+        my ($value, $type, $name) = @_;
         my $itemtype = $type->{items}->{check_type};
         my $check = $type_check{$itemtype};
         if (ref $value ne 'array') {
-            die "an array of $itemtype";
+            failed($name, $type, "must be an array of $itemtype");
         }
 
         # Let any exceptions propagate up
-        return [ map { $check->($_, $type->{items}) } @$value ];
+        my @ret;
+        while (my ($index, $item) = each @$value) {
+            push(@ret, $check->($item, $type->{items}, "$name\[$index\]"));
+        }
+        return \@ret;
     },
     object => sub {
-        my ($value, $type) = @_;
+        my ($value, $type, $name) = @_;
         my %ret;
         while (my ($field_name, $field_type) = each %{ $type->{properties} }) {
             my $field_value = $value->{$field_name};
             if (!defined $field_value && $field_type->{required}) {
-                die "Missing field $field_name\n";
+                failed($name, $type, "missing field $field_name");
             }
 
             my $check = $type_check{ $field_type->{check_type} };
-            $ret{$field_name} = $check->($field_value, $field_type);
+            $ret{$field_name} = $check->($field_value, $field_type, "$name");
         }
 
         return \%ret;
@@ -188,6 +204,8 @@ fun assign_type($spec) {
         $spec->{check_type} = $spec->{type};
     }
     else {
+        say STDERR "Can't match type for $spec->{type}";
+        use Data::Dumper::Concise; print STDERR "MISSING: ", Dumper($spec);
         $spec->{type} = $spec->{check_type} = 'string';
     }
 
@@ -230,8 +248,7 @@ method make_handler($metadata) {
 
     # Create a closure that wraps the custom handler in some parameter handling
     # code.
-    return sub {
-        my ($app) = @_;
+    return fun($app) {
 
         # Validate and coerce the parameters.
         my %params;
@@ -260,12 +277,13 @@ method make_handler($metadata) {
             }
 
             try {
+                use Data::Dumper::Concise; print STDERR "Checking: ", Dumper($vals[0], $p->{check_type});
                 my $check = $type_check{$p->{check_type}};
-                $params{$name} = $check->($vals[0], $p);
+                $params{$name} = $check->($vals[0], $p, '');
             }
             catch {
-                chomp;
-                $errors{$name} = "must be $_";
+                use Data::Dumper::Concise; print STDERR Dumper($_);
+                @errors{ keys %$_ } = values %$_;
             };
         }
 
@@ -280,6 +298,7 @@ method make_handler($metadata) {
     }
 }
 
+# Generate a default handler when the named handler does not exist.
 method unimplemented($sub_name) {
     return fun($app, $params, $metadata) {
         my $ret = {
