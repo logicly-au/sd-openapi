@@ -13,6 +13,9 @@ use Try::Tiny;
 
 use Function::Parameters qw( :strict );
 
+# This needs to be declared early as it is self-referential.
+my %type_check;
+
 has 'namespace' => (
     is => 'ro',
     default => method {
@@ -120,10 +123,95 @@ my %param_method = (
     query    => 'query_parameters',
 );
 
+method make_handler($metadata) {
+    my $package = join('::',
+        $self->namespace,
+        'Controller',
+        $metadata->{module_name},
+    );
+
+    load_class($package);
+    my $sub = $package->can($metadata->{sub_name});
+
+    my $symbol = $package . '::' . $metadata->{sub_name};
+    my $path   = $metadata->{dancer2_path};
+    my $method = $metadata->{http_method};
+
+    if (! defined $sub) {
+        # If the required handler can't be found, substitute a default handler
+        # which returns an unimplemented error along with some extra info.
+        $log->error("Handler $symbol not found for $method $path");
+        $sub = $self->unimplemented($metadata->{operationId});
+    }
+    else {
+        $log->info("$method $path");
+        $log->info(" --> $metadata->{module_name}::$metadata->{sub_name}");
+    }
+
+    # Install type checkers for all the types.
+    # Do this ahead of time so we only need to check it all once. At run-time
+    # we can assume this is all correct.
+    my $default_type = 'string';
+    for my $p (@{ $metadata->{parameters} }) {
+        assign_type($p);
+    }
+
+    # Wrap the handler $sub in parameter validation/inflation code.
+    # The function below is what gets called at run-time.
+    return fun($app) {
+
+        # Validate and inflate the parameters.
+        my %params;
+        my %errors;
+        for my $p (@{ $metadata->{parameters} }) {
+            my $get_param = $param_method{$p->{in}};
+
+            my $name = $p->{name};
+            my @vals;
+            if ($p->{in} eq 'body') {
+                $vals[0] = $app->request->data;
+            }
+            else {
+                @vals = $app->request->$get_param->get_all($name);
+            }
+
+            if (@vals == 0) {
+                $errors{$name} = "parameter $name not specified"
+                    if $p->{required};
+                next;
+            }
+
+            if (@vals > 1) {
+                $errors{$name} = "parameter $name specified multiple times";
+                next;
+            }
+
+            try {
+                my $check = $type_check{$p->{check_type}};
+                $params{$name} = $check->($vals[0], $p, $name);
+            }
+            catch {
+                @errors{ keys %$_ } = values %$_;
+            };
+        }
+
+        # Bomb out if we had any errors.
+        if (keys %errors) {
+            $app->response->status(400);
+            return { errors => \%errors };
+        }
+
+        # Otherwise pass through the the actual handler.
+        return $sub->($app, \%params, $metadata);
+    }
+}
+
 my $datetime_parser = DateTime::Format::ISO8601->new;
 
 # http://swagger.io/specification/#data-types-12
-my %type_check;
+# This table contains handlers to check and inflate the incoming types.
+# In assign_type we set a check_type field in each type. This field matches
+# the keys below.
 %type_check = (
     integer => sub {
         my ($value, $type, $name) = @_;
@@ -210,6 +298,9 @@ my %type_check;
     },
 );
 
+# Recursively assign types to the parameters. The swagger params use a two-level
+# hierarchy for the types. We create a single 'check_type' key which maps to
+# the correct handler in the %type_check table.
 fun assign_type($spec) {
     if ((exists $spec->{format}) && (exists $type_check{ $spec->{format} })) {
         $spec->{check_type} = $spec->{format};
@@ -228,89 +319,6 @@ fun assign_type($spec) {
     }
     elsif ($spec->{check_type} eq 'object') {
         assign_type($_) for values %{ $spec->{properties} };
-    }
-}
-
-method make_handler($metadata) {
-    my $package = join('::',
-        $self->namespace,
-        'Controller',
-        $metadata->{module_name},
-    );
-
-    load_class($package);
-    my $sub = $package->can($metadata->{sub_name});
-
-    my $symbol = $package . '::' . $metadata->{sub_name};
-    my $path   = $metadata->{dancer2_path};
-    my $method = $metadata->{http_method};
-
-    if (! defined $sub) {
-        # If the required handler can't be found, substitute a default handler
-        # which returns an unimplemented error along with some extra info.
-        $log->error("Handler $symbol not found for $method $path");
-        $sub = $self->unimplemented($metadata->{operationId});
-    }
-    else {
-        $log->info("$method $path");
-        $log->info(" --> $metadata->{module_name}::$metadata->{sub_name}");
-    }
-
-    # Install type checkers for all the types.
-    # Do this ahead of time so we only need to check it all once. At run-time
-    # we can assume this is all correct.
-    my $default_type = 'string';
-    for my $p (@{ $metadata->{parameters} }) {
-        assign_type($p);
-    }
-
-    # Wrap the handler $sub in parameter validation/inflation code.
-    # The function below is what gets called at run-time.
-    return fun($app) {
-
-        # Validate and inflate the parameters.
-        my %params;
-        my %errors;
-        for my $p (@{ $metadata->{parameters} }) {
-            my $get_param = $param_method{$p->{in}};
-
-            my $name = $p->{name};
-            my @vals;
-            if ($p->{in} eq 'body') {
-                $vals[0] = $app->request->data;
-            }
-            else {
-                @vals = $app->request->$get_param->get_all($name);
-            }
-
-            if (@vals == 0) {
-                $errors{$name} = "parameter $name not specified"
-                    if $p->{required};
-                next;
-            }
-
-            if (@vals > 1) {
-                $errors{$name} = "parameter $name specified multiple times";
-                next;
-            }
-
-            try {
-                my $check = $type_check{$p->{check_type}};
-                $params{$name} = $check->($vals[0], $p, $name);
-            }
-            catch {
-                @errors{ keys %$_ } = values %$_;
-            };
-        }
-
-        # Bomb out if we had any errors.
-        if (keys %errors) {
-            $app->response->status(400);
-            return { errors => \%errors };
-        }
-
-        # Otherwise pass through the the actual handler.
-        return $sub->($app, \%params, $metadata);
     }
 }
 
