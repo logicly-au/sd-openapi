@@ -278,7 +278,9 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         while (my ($field_name, $field_type) = each %{ $type->{properties} }) {
             my $key = "$name\.$field_name";
 
-            if (!exists $value->{$field_name}) {
+            # required fields must exist and be defined.
+            # non-required fields are skipped over if missing or undef
+            if (!exists $value->{$field_name} || !defined $value->{$field_name}) {
                 $errors{$key} = "missing required field $field_name"
                     if $field_type->{required};
                 next;
