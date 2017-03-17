@@ -35,8 +35,11 @@ method make_app($app) {
 
     $log->info("Auto-generating dancer2 routes");
 
-    while (my ($path, $request) = each %$paths) {
-        while (my ($method, $spec) = each %$request) {
+    # sort paths on their *swagger* representation, ensuring specific
+    # paths are added before generic ones; eg.
+    # `/users/current` before `/users/{UUID}`.
+    for my $path (sort keys %$paths) {
+        while (my ($method, $spec) = each %{$paths->{$path}}) {
 
             my $metadata = $self->create_metadata($path, $method, $spec)
                 or next;
