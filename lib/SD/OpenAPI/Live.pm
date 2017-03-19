@@ -18,15 +18,23 @@ method BUILD {
     _expand_schemas($self->spec->{paths});
 }
 
-fun _expand_references($hash, $definition_for) {
+fun _expand_references($value, $definition_for) {
+    if (ref $value eq 'HASH') {
+        _expand_hash_references($value, $definition_for);
+    }
+    elsif (ref $value eq 'ARRAY') {
+        _expand_array_references($value, $definition_for);
+    }
+}
+
+fun _expand_hash_references($hash, $definition_for) {
     for my $key (keys %$hash) {
         my $value = $hash->{$key};
 
-        if (ref $value eq 'HASH') {
-            # Recursively expand any hash values we find.
-            _expand_references($value, $definition_for);
-        }
-        elsif (($key eq '$ref') && ($value =~ m{#/definitions/(.*)})) {
+        # Recursively expand any hash or array values we find.
+        _expand_references($value, $definition_for);
+
+        if (($key eq '$ref') && ($value =~ m{#/definitions/(.*)})) {
             if (exists $definition_for->{$1}) {
                 my $replacement = $definition_for->{$1};
 
@@ -37,6 +45,12 @@ fun _expand_references($hash, $definition_for) {
                 @${hash}{ keys %$replacement } = values %$replacement;
             }
         }
+    }
+}
+
+fun _expand_array_references($array, $definition_for) {
+    for my $value (@$array) {
+        _expand_references($value, $definition_for);
     }
 }
 
