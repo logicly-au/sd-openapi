@@ -16,7 +16,7 @@ use Function::Parameters qw( :strict );
 # This needs to be declared early as it is self-referential.
 my %type_check;
 
-has 'namespace' => (
+has namespace => (
     is => 'ro',
     default => method {
         # Walk up the call stack until we find a package that isn't ours.
