@@ -6,17 +6,13 @@ requires $_ for qw(
     Data::Dumper::Concise
     DateTime::Format::ISO8601
     Digest::MD5
-    File::ShareDir
     Function::Parameters
     JSON::MaybeXS
     JSON::Validator
-    List::UtilsBy
     Log::Any
     Moo
     MooX::Options
     Path::Tiny
-    Template
-    Template::Plugin::DataPrinter
     Try::Tiny
     YAML::XS
 );
