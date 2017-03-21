@@ -93,24 +93,22 @@ fun _hoist_schemas($root) {
 fun _merge_allofs($root) {
     _walk_tree($root, fun($object) {
         return unless ref $object eq 'HASH';
+        return unless exists $object->{allOf};
 
-        if (exists $object->{allOf}) {
-            for my $sub_object (@{ $object->{allOf} }) {
-                while (my ($key, $value) = each %$sub_object) {
-                    if (ref $value eq 'HASH') {
-                        @{ $object->{$key} }{ keys %$value } = values %$value;
-                    }
-                    elsif (ref $value eq 'ARRAY') {
-                        push(@{ $object->{$key} }, @$value);
+        for my $sub_object (@{ $object->{allOf} }) {
+            while (my ($key, $value) = each %$sub_object) {
+                if (ref $value eq 'HASH') {
+                    @{ $object->{$key} }{ keys %$value } = values %$value;
+                }
+                elsif (ref $value eq 'ARRAY') {
+                    push(@{ $object->{$key} }, @$value);
+                }
+                else {
+                    if (exists $object->{$key} && $object->{$key} ne $value) {
+                        die "Merging allof: $object->{$key} ne $value\n";
                     }
                     else {
-                        if (exists $object->{$key} &&
-                            $object->{$key} ne $value) {
-                            die "Merging allof: $object->{$key} ne $value\n";
-                        }
-                        else {
-                            $object->{$key} //= $value;
-                        }
+                        $object->{$key} //= $value;
                     }
                 }
             }
