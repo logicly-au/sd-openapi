@@ -237,6 +237,16 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         }
         die { $name => "must be a boolean value (0 or 1)" };
     },
+    date => sub {
+        my ($value, $type, $name) = @_;
+        try {
+            $value = $datetime_parser->parse_datetime($value);
+        }
+        catch {
+            die { $name => "must be an ISO8601-formatted date string" };
+        };
+        return $value;
+    },
     'date-time' => sub {
         my ($value, $type, $name) = @_;
         try {
