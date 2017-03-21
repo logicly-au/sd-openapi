@@ -9,6 +9,7 @@ use Clone                       qw( clone );
 use Class::Load                 qw( load_class );
 use DateTime::Format::ISO8601   qw( );
 use Log::Any                    qw( $log );
+use JSON::MaybeXS               qw( is_bool );
 use Try::Tiny;
 
 use Function::Parameters qw( :strict );
@@ -232,7 +233,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     boolean => sub {
         my ($value, $type, $name) = @_;
-        if ((ref $value eq 'JSON::PP::Boolean') || ($value =~ /^0|1$/)) {
+        if (is_bool($value) || ($value =~ /^0|1$/)) {
             return !!$value;
         }
         die { $name => "must be a boolean value" };
