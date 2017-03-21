@@ -232,10 +232,10 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     boolean => sub {
         my ($value, $type, $name) = @_;
-        if ($value =~ /^0|1$/) {
-            return $value != 0;
+        if ((ref $value eq 'JSON::PP::Boolean') || ($value =~ /^0|1$/)) {
+            return !!$value;
         }
-        die { $name => "must be a boolean value (0 or 1)" };
+        die { $name => "must be a boolean value" };
     },
     date => sub {
         my ($value, $type, $name) = @_;
