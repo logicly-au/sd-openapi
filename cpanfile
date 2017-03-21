@@ -1,6 +1,7 @@
 requires 'perl', '5.022000';
 
 requires $_ for qw(
+    Class::Load
     Clone
     Data::Dumper::Concise
     DateTime::Format::ISO8601
