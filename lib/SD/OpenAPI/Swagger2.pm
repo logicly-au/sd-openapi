@@ -113,6 +113,8 @@ fun _merge_allofs($root) {
                 }
             }
         }
+
+        delete $object->{allOf};
     });
 }
 
