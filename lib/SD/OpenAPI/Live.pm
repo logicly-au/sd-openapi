@@ -5,7 +5,10 @@ use warnings;
 use Moo;
 
 use Carp                    qw( croak );
+use JSON::MaybeXS           qw( );
 use Log::Any                qw( $log );
+use Path::Tiny              qw( path );
+use YAML::XS                qw( );
 use SD::OpenAPI::Swagger2   qw( expand_swagger validate_swagger );
 use Try::Tiny;
 
@@ -21,7 +24,10 @@ has spec => (
 );
 
 method _build_spec {
-    my $swagger = YAML::XS::LoadFile($self->swagger_path);
+    my $content = path($self->swagger_path)->slurp_utf8;
+    my $swagger = ($content =~ /^\s*\{/s)
+        ? JSON::MaybeXS::decode_json($content)
+        : YAML::XS::Load($content);
 
     try {
         $swagger = validate_swagger($swagger);
