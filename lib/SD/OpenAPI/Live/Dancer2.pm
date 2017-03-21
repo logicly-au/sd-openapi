@@ -314,7 +314,7 @@ fun assign_type($spec) {
         $spec->{check_type} = $spec->{type};
     }
     else {
-        $log->error("Can't match type for $spec->{type}");
+        $log->error("Can't match type for $spec->{name}");
         #use Data::Dumper::Concise; print STDERR "MISSING: ", Dumper($spec);
         $spec->{type} = $spec->{check_type} = 'string';
     }
