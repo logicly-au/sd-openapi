@@ -120,11 +120,21 @@ method add_route($app, $metadata) {
 }
 
 my %param_method = (
-    body     => 'body_parameters',
-    formData => 'body_parameters',
-    header   => 'header',
-    path     => 'route_parameters',
-    query    => 'query_parameters',
+    body => fun($request, $param) {
+        return ( $request->data );
+    },
+    formData => fun($request, $param) {
+        return ( $request->data );
+    },
+    header => fun($request, $param) {
+        return $request->header($param);
+    },
+    path => fun($request, $param) {
+        return $request->route_parameters->get_all($param);
+    },
+    query => fun($request, $param) {
+        return $request->query_parameters->get_all($param);
+    },
 );
 
 method make_handler($metadata) {
@@ -171,13 +181,7 @@ method make_handler($metadata) {
             my $get_param = $param_method{$p->{in}};
 
             my $name = $p->{name};
-            my @vals;
-            if ($p->{in} eq 'body') {
-                $vals[0] = $app->request->data;
-            }
-            else {
-                @vals = $app->request->$get_param->get_all($name);
-            }
+            my @vals = $get_param->($app->request, $name);
 
             if (@vals == 0) {
                 $errors{$name} = "parameter $name not specified"
