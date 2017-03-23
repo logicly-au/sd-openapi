@@ -266,6 +266,16 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         };
         return $value;
     },
+    'range' => sub {
+        my ($value, $type, $name) = @_;
+        # XXX: Do we allow just /(\d+)-/ as well?
+        if (my ($low, $high) = ($value =~ /^(\d+)-(\d+)$/)) {
+            if ($low <= $high) {
+                return [ $low, $high ];
+            }
+        }
+        die { $name => "must be a range low-high (eg. 500-599)" };
+    },
     array => sub {
         my ($value, $type, $name) = @_;
         my $itemtype = $type->{items}->{check_type};
