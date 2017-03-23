@@ -233,7 +233,11 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     boolean => sub {
         my ($value, $type, $name) = @_;
-        if (is_bool($value) || ($value =~ /^0|1$/)) {
+        if (
+            is_bool($value) ||              # decoded body params
+            ($value =~ /^0|false|1|true$/)  # query params are strings
+        ) {
+            return 0 if $value eq 'false';  # special case false, other cases are logical
             return $value ? 1 : 0; # this works better with postgres
         }
         die { $name => "must be a boolean value" };
