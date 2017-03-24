@@ -266,7 +266,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         };
         return $value;
     },
-    'range' => sub {
+    range => sub {
         my ($value, $type, $name) = @_;
         if (my ($low, $high) = ($value =~ /^(\d+)-(\d+)?$/)) {
             if ((!defined $high) || ($low <= $high)) {
@@ -274,6 +274,15 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
             }
         }
         die { $name => "must be a range (eg. 500-599, or 100-)" };
+    },
+    sort => sub {
+        my ($value, $type, $name) = @_;
+        my $re = qr/[-+]\w+/;
+        if ($value =~ /^$re(?:,$re)*$/) {
+            # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
+            return [ map { [ /^(.)(.+)$/ ] } split(/,/, $value) ];
+        }
+        die { $name => 'must be a comma-separated list of +ident/-ident' };
     },
     array => sub {
         my ($value, $type, $name) = @_;
