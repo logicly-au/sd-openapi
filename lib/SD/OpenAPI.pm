@@ -3,7 +3,7 @@ use 5.22.0;
 use Moo;
 use Function::Parameters qw(:strict);
 
-our $VERSION = '0.0.14';
+our $VERSION = '0.0.15';
 
 method version {
     my $class = ref $self || $self;
