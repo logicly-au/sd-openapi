@@ -277,12 +277,18 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     sort => sub {
         my ($value, $type, $name) = @_;
-        my $re = qr/[-+]\w+/;
-        if ($value =~ /^$re(?:,$re)*$/) {
+        my $sign  = qr/[-+]/;
+        my $ident = qr/\w+/;
+        my $term  = qr/($sign)?($ident)/;
+        if ($value =~ /^$term(?:,$term)*$/) {
             # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
-            return [ map { [ /^(.)(.+)$/ ] } split(/,/, $value) ];
+            # The sign is optional, and defaults to plus. Note that the regex
+            # below deliberately makes the sign non-optional. If we match, we
+            # have an explicit sign, otherwise we have no sign.
+            return [ map { /^($sign)($ident)$/ ? [ $1, $2 ] : [ '+', $_ ] }
+                       split(/,/, $value) ];
         }
-        die { $name => 'must be a comma-separated list of +ident/-ident' };
+        die { $name => 'must be a comma-separated list of word/+word/-word' };
     },
     array => sub {
         my ($value, $type, $name) = @_;
