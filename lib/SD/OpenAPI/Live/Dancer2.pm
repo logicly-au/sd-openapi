@@ -168,6 +168,21 @@ method make_handler($metadata) {
     my $default_type = 'string';
     for my $p (@{ $metadata->{parameters} }) {
         assign_type($p);
+
+        # Similarly, validate and check any default values early.
+        if (exists $p->{default}) {
+            my $check = $type_check{$p->{check_type}};
+            try {
+                $p->{default_value} =
+                        $check->($p->{default}, $p, $p->{name} . '.default');
+            }
+            catch {
+                while (my ($field, $error) = each %$_) {
+                    $log->error("$field: $error");
+                    #XXX: die here?
+                }
+            };
+        }
     }
 
     # Wrap the handler $sub in parameter validation/inflation code.
@@ -186,6 +201,12 @@ method make_handler($metadata) {
             if (@vals == 0) {
                 $errors{$name} = "parameter $name not specified"
                     if $p->{required};
+
+                if (exists $p->{default_value}) {
+                    # This is already validated and inflated. Copy it and move
+                    # on to the next parameter. We don't need to fall through.
+                    $params{$name} = $p->{default_value};
+                }
                 next;
             }
 
