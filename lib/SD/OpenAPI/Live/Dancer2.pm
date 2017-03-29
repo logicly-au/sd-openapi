@@ -307,7 +307,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
             return [ map { /^([+-])(.*)$/ ? [ $1, $2 ] : [ '+', $_ ] }
                        split(/,/, $value) ];
         }
-        die { $name => 'must be a comma-separated list of word/+word/-word' };
+        die { $name => $type->{error_message} };
     },
     array => sub {
         my ($value, $type, $name) = @_;
@@ -385,14 +385,21 @@ fun assign_type($spec) {
         # Build up the regex that matches the sort spec ahead of time.
         # If we have an array of x-sort-fields, use those specifically,
         # otherwise default to \w+.
+        $spec->{error_message} =
+            'must be a comma-separated list of field/+field/-field';
         my $sign  = qr/[-+]/;
         my $ident = qr/\w+/;    # default case if no sort fields specified
         if (my $sort_fields = $spec->{'x-sort-fields'}) {
             my $pattern = join('|', map { quotemeta } sort @$sort_fields);
             $ident = qr/(?:$pattern)/;
+
+            $spec->{error_message} .= '. Valid fields are: ' .
+                join(', ', sort @$sort_fields);
         }
         my $term = qr/($sign)?($ident)/;
         $spec->{pattern} = qr/^$term(?:,$term)*$/;
+
+        # TODO: we could replace or augment the description field to list the available sort fields
     }
 
     if ($spec->{check_type} eq 'array') {
