@@ -298,15 +298,13 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     sort => sub {
         my ($value, $type, $name) = @_;
-        my $sign  = qr/[-+]/;
-        my $ident = qr/\w+/;
-        my $term  = qr/($sign)?($ident)/;
-        if ($value =~ /^$term(?:,$term)*$/) {
+
+        if ($value =~ $type->{pattern}) {
             # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
             # The sign is optional, and defaults to plus. Note that the regex
             # below deliberately makes the sign non-optional. If we match, we
             # have an explicit sign, otherwise we have no sign.
-            return [ map { /^($sign)($ident)$/ ? [ $1, $2 ] : [ '+', $_ ] }
+            return [ map { /^([+-])(.*)$/ ? [ $1, $2 ] : [ '+', $_ ] }
                        split(/,/, $value) ];
         }
         die { $name => 'must be a comma-separated list of word/+word/-word' };
@@ -381,6 +379,20 @@ fun assign_type($spec) {
         $log->error("Can't match type for $spec->{name}");
         #use Data::Dumper::Concise; print STDERR "MISSING: ", Dumper($spec);
         $spec->{type} = $spec->{check_type} = 'string';
+    }
+
+    if ($spec->{check_type} eq 'sort') {
+        # Build up the regex that matches the sort spec ahead of time.
+        # If we have an array of x-sort-fields, use those specifically,
+        # otherwise default to \w+.
+        my $sign  = qr/[-+]/;
+        my $ident = qr/\w+/;    # default case if no sort fields specified
+        if (my $sort_fields = $spec->{'x-sort-fields'}) {
+            my $pattern = join('|', map { quotemeta } sort @$sort_fields);
+            $ident = qr/(?:$pattern)/;
+        }
+        my $term = qr/($sign)?($ident)/;
+        $spec->{pattern} = qr/^$term(?:,$term)*$/;
     }
 
     if ($spec->{check_type} eq 'array') {
