@@ -298,18 +298,16 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     sort => sub {
         my ($value, $type, $name) = @_;
-        my $sign  = qr/[-+]/;
-        my $ident = qr/\w+/;
-        my $term  = qr/($sign)?($ident)/;
-        if ($value =~ /^$term(?:,$term)*$/) {
+
+        if ($value =~ $type->{pattern}) {
             # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
             # The sign is optional, and defaults to plus. Note that the regex
             # below deliberately makes the sign non-optional. If we match, we
             # have an explicit sign, otherwise we have no sign.
-            return [ map { /^($sign)($ident)$/ ? [ $1, $2 ] : [ '+', $_ ] }
+            return [ map { /^([+-])(.*)$/ ? [ $1, $2 ] : [ '+', $_ ] }
                        split(/,/, $value) ];
         }
-        die { $name => 'must be a comma-separated list of word/+word/-word' };
+        die { $name => $type->{error_message} };
     },
     array => sub {
         my ($value, $type, $name) = @_;
@@ -381,6 +379,27 @@ fun assign_type($spec) {
         $log->error("Can't match type for $spec->{name}");
         #use Data::Dumper::Concise; print STDERR "MISSING: ", Dumper($spec);
         $spec->{type} = $spec->{check_type} = 'string';
+    }
+
+    if ($spec->{check_type} eq 'sort') {
+        # Build up the regex that matches the sort spec ahead of time.
+        # If we have an array of x-sort-fields, use those specifically,
+        # otherwise default to \w+.
+        $spec->{error_message} =
+            'must be a comma-separated list of field/+field/-field';
+        my $sign  = qr/[-+]/;
+        my $ident = qr/\w+/;    # default case if no sort fields specified
+        if (my $sort_fields = $spec->{'x-sort-fields'}) {
+            my $pattern = join('|', map { quotemeta } sort @$sort_fields);
+            $ident = qr/(?:$pattern)/;
+
+            $spec->{error_message} .= '. Valid fields are: ' .
+                join(', ', sort @$sort_fields);
+        }
+        my $term = qr/($sign)?($ident)/;
+        $spec->{pattern} = qr/^$term(?:,$term)*$/;
+
+        # TODO: we could replace or augment the description field to list the available sort fields
     }
 
     if ($spec->{check_type} eq 'array') {
