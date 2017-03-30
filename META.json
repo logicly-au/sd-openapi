@@ -72,13 +72,13 @@
          "url" : "git://gh.sdintra.net/StrategicData/SD-OpenAPI.git"
       }
    },
-   "version" : "0.0.17",
+   "version" : "0.0.18",
    "x_contributors" : [
       "Adam Clarke <adamc@strategicdata.com.au>",
       "Adam Clarke <adam.clarke@strategicdata.com.au>",
       "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
-      "Stephen Thirlwall <stephen.thirlwall@strategicdata.com.au>",
       "Russell Jenkins <veryrusty@gmail.com>",
+      "Stephen Thirlwall <stephen.thirlwall@strategicdata.com.au>",
       "Stephen Thirlwall <stephent@strategicdata.com.au>"
    ],
    "x_serialization_backend" : "JSON::PP version 2.27300_01"
