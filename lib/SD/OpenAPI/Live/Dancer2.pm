@@ -19,7 +19,7 @@ my %type_check;
 
 has namespace => (
     is => 'ro',
-    default => method {
+    default => method() {
         # Walk up the call stack until we find a package that isn't ours.
         for (my $depth = 0; my $caller = caller($depth); $depth++) {
             if ($caller ne __PACKAGE__) {

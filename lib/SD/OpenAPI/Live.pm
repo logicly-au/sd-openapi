@@ -23,7 +23,7 @@ has spec => (
     is => 'lazy',
 );
 
-method _build_spec {
+method _build_spec() {
     my $content = path($self->swagger_path)->slurp_utf8;
     my $swagger = ($content =~ /^\s*\{/s)
         ? JSON::MaybeXS::decode_json($content)

@@ -6,7 +6,7 @@ use Function::Parameters qw(:strict);
 
 with 'SD::OpenAPI::Role::Swagger2', 'SD::OpenAPI::Role::FileGenerator';
 
-method BUILD {
+method BUILD() {
     # dies on failure
     $self->_validate_spec;
 }

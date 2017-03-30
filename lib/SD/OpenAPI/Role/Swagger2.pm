@@ -17,7 +17,7 @@ has _openapi_specification_uri => (
 );
 
 has _openapi_schema => (
-    is => 'lazy',  
+    is => 'lazy',
 );
 
 has spec => (
@@ -29,14 +29,14 @@ has spec => (
     },
 );
 
-method _build__openapi_schema {
+method _build__openapi_schema() {
     my $res = HTTP::Tiny->new->get( $self->_openapi_specification_uri );
     croak "Failed to fetch OpenAPI schema specification"
       unless $res->{success};
     return JSON::MaybeXS::decode_json( $res->{content} );
 }
 
-method _validate_spec {
+method _validate_spec() {
     my $validator = JSON::Validator->new();
 
     # YAML doesn't have an equivilent boolean notation as JSON does
@@ -47,14 +47,14 @@ method _validate_spec {
     my @errors = $validator->validate( $self->spec );
     croak "Failed to validate supplied spec against OpenAPI schema"
       if scalar @errors;
-    
+
     # DIRTY: *in-place* resolve of references
     $validator->schema($self->spec);
 }
 
 fun _load_spec($source) {
     unless ( defined $source && $source ) {
-        croak "No source for spec provided"        
+        croak "No source for spec provided"
     }
 
     my $content;
@@ -69,8 +69,8 @@ fun _load_spec($source) {
         my $file = path($source);
         croak "$source does not exist (or not a file)"
           unless $file->is_file;
-    
-        $content = $file->slurp_raw;        
+
+        $content = $file->slurp_raw;
     }
 
     return ( $content =~ m/^\s*\{/s )

@@ -22,7 +22,7 @@ has 'ignore_basepath' => (
     default => 0,
 );
 
-method make_routes {
+method make_routes() {
     $self->_write_routes(
         routes => $self->_parse_routes(),
     );

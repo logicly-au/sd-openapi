@@ -24,7 +24,7 @@ method write_file( :$filename, :$content, :$overwrite = 0) {
         return;
     }
     $file->parent->mkpath unless $file->exists; # creates intermediate directories too
-    
+
     my $comment = $self->_sig_comment(
         version   => $self->version,
         timestamp => POSIX::strftime('%Y-%m-%d %H:%M:%S', localtime),
@@ -66,7 +66,7 @@ method write_file_with_sig( :$filename, :$content, :$custom = '', :$overwrite = 
       or croak "Error closing '$filename': $!";
 }
 
-method default_custom_content {
+method default_custom_content() {
     my $default = qq|\n\n# You can replace this text with custom|
          . qq| code or comments, and it will be preserved on regeneration|
          . qq|\n1;\n|;

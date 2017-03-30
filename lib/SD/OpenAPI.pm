@@ -5,7 +5,7 @@ use Function::Parameters qw(:strict);
 
 our $VERSION = '0.0.17';
 
-method version {
+method version() {
     my $class = ref $self || $self;
     return eval "\$${class}::VERSION";
 }
