@@ -251,10 +251,10 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
     string => sub {
         my ($value, $type, $name) = @_;
-        if (length($value) > 0) {
+        if (defined $value) {
             return "$value";
         }
-        die { $name => 'must be a non-empty string' };
+        die { $name => 'must be a string value' };
     },
     boolean => sub {
         my ($value, $type, $name) = @_;
