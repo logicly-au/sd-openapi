@@ -30,6 +30,26 @@ has namespace => (
     },
 );
 
+has hooks => (
+    is => 'ro',
+    default => sub {
+        return {
+            before_params  => [ ],
+            before_handler => [ ],
+            after_handler  => [ ],
+        };
+    },
+);
+
+method set_hook($hook_name, $code) {
+    croak("Unknown hook $hook_name") unless exists $self->hooks->{$hook_name};
+    push(@{ $self->hooks->{$hook_name} }, $code);
+}
+
+method get_hooks($hook_name) {
+    return @{ $self->hooks->{$hook_name} // [] };
+}
+
 method make_app($app) {
     my $paths = $self->spec->{paths};
     my %options;
@@ -189,8 +209,14 @@ method make_handler($metadata) {
     # The function below is what gets called at run-time.
     return fun($app) {
 
-        # Validate and inflate the parameters.
         my %params;
+
+        # Run any before_params hooks.
+        for my $hook ($self->get_hooks('before_params')) {
+            $hook->($app, \%params, $metadata);
+        }
+
+        # Validate and inflate the parameters.
         my %errors;
         for my $p (@{ $metadata->{parameters} }) {
             my $get_param = $param_method{$p->{in}};
@@ -230,8 +256,20 @@ method make_handler($metadata) {
             return { errors => \%errors };
         }
 
+        # Run any before_handler hooks.
+        for my $hook ($self->get_hooks('before_handler')) {
+            $hook->($app, \%params, $metadata);
+        }
+
         # Otherwise pass through the the actual handler.
-        return $sub->($app, \%params, $metadata);
+        my $result = $sub->($app, \%params, $metadata);
+
+        # Run any after_handler hooks.
+        for my $hook ($self->get_hooks('after_handler')) {
+            $hook->($app, \%params, $result, $metadata);
+        }
+
+        return $result;
     }
 }
 
@@ -434,5 +472,43 @@ __END__
 =head1 NAME
 
 SD::OpenAPI::Live::Dancer2
+
+=head1 METHODS
+
+=head2 make_app($app)
+
+Inject the routes defined in the openapi spec to the given Dancer2 app.
+
+This could probably do with a more meaningful name.
+
+=head2 set_hook($hook_name, $handler_subref)
+
+Similar in nature to Dancer2 hooks, these provide places in the code where
+the downstream app can inject custom behaviour.
+
+The code in the hooks is free to modify the parameters passed to it, throw
+exceptions, or return error responses. Note that in the case of exceptions
+or C<send_as> error responses, other hook handlers that would have been called
+get skipped.
+
+=head3 before_params($app, $params, $metadata)
+
+This gets called before any of the parameter checking has been done. The $params
+hashref is empty.
+
+This is an appropriate place to do auth checking.
+
+=head2 before_handler($app, $params, $metadata)
+
+This gets called just before the route handler code. All of the parameter
+processing has been completed. The args passed to this function are exactly
+what would be passed to the route handler itself.
+
+=head2 after_handler($app, $params, $result, $metadata)
+
+This gets called immediately after the route handler has returned. It has an
+extra C<$result> parameter which is the return value from the route handler.
+
+The hook code is free to modify this C<$result> object.
 
 =cut
