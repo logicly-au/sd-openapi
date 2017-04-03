@@ -16,27 +16,36 @@ use Function::Parameters    qw( :strict );
 
 has swagger_path => (
     is => 'ro',
-    required => 1,
+    predicate => 1,
+);
+
+has swagger => (
+    is => 'lazy',
+    builder => method() {
+        die "Must specify swagger or swagger_path"
+            unless $self->has_swagger_path;
+
+        my $content = path($self->swagger_path)->slurp_utf8;
+        return ($content =~ /^\s*\{/s)
+            ? JSON::MaybeXS::decode_json($content)
+            : YAML::XS::Load($content);
+    },
 );
 
 has spec => (
     is => 'lazy',
+    builder => method() {
+        my $swagger = $self->swagger;
+        try {
+            $swagger = validate_swagger($swagger);
+        }
+        catch {
+            my $path = $self->swagger_path // '(swagger)';
+            croak "$path $_\n";
+        };
+
+        return expand_swagger($swagger);
+    },
 );
-
-method _build_spec() {
-    my $content = path($self->swagger_path)->slurp_utf8;
-    my $swagger = ($content =~ /^\s*\{/s)
-        ? JSON::MaybeXS::decode_json($content)
-        : YAML::XS::Load($content);
-
-    try {
-        $swagger = validate_swagger($swagger);
-    }
-    catch {
-        croak $self->swagger_path . "$_\n";
-    };
-
-    return expand_swagger($swagger);
-}
 
 1;
