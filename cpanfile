@@ -18,6 +18,5 @@ requires $_ for qw(
 );
 
 on 'test' => sub {
-    requires 'Test::More';
-
+    requires 'SD::Test';
 };
