@@ -1,0 +1,11 @@
+version: "2.0"
+
+services:
+    sd-openapi:
+        build: .
+        environment:
+            PERL5LIB: /test/t/lib:/test/lib
+        volumes:
+            - .:/test
+        working_dir: /test
+

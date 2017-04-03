@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Run this just like prove.
+
+docker-compose run --rm sd-openapi bash -c '
+    prove "$@"
+' prove "$@"
