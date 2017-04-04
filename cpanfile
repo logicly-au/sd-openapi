@@ -19,4 +19,5 @@ requires $_ for qw(
 
 on 'test' => sub {
     requires 'SD::Test';
+    requires 'Plack::Test';
 };

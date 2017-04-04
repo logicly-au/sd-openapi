@@ -7,6 +7,16 @@ use Dancer2;
 use Function::Parameters qw( :strict );
 use SD::OpenAPI::Live::Dancer2;
 
+set engines => {
+    serializer => {
+        JSON => {
+            canonical       => 1,
+            convert_blessed => 1,
+            pretty          => 1,
+        },
+    },
+};
+
 set serializer => 'JSON';
 
 my $openapi;
@@ -24,10 +34,6 @@ method generate($class: $swagger) {
 
 method openapi($class:) {
     return $openapi;
-}
-
-{
-    package Fixture::App::Controller::Test;
 }
 
 1;

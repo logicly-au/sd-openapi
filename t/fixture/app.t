@@ -1,4 +1,5 @@
 use SD::Test;
+use lib 't/lib';
 use Fixture::App;
 
 my $swagger = {

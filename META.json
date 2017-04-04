@@ -61,6 +61,7 @@
       },
       "test" : {
          "requires" : {
+            "Plack::Test" : "0",
             "SD::Test" : "0"
          }
       }
@@ -76,10 +77,10 @@
    "x_contributors" : [
       "Adam Clarke <adamc@strategicdata.com.au>",
       "Adam Clarke <adam.clarke@strategicdata.com.au>",
-      "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
       "Russell Jenkins <veryrusty@gmail.com>",
       "Stephen Thirlwall <stephen.thirlwall@strategicdata.com.au>",
-      "Stephen Thirlwall <stephent@strategicdata.com.au>"
+      "Stephen Thirlwall <stephent@strategicdata.com.au>",
+      "Russell Jenkins <russell.jenkins@strategicdata.com.au>"
    ],
    "x_serialization_backend" : "JSON::PP version 2.27300"
 }
