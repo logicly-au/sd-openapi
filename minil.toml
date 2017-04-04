@@ -1,5 +1,9 @@
-name = "SD-OpenAPI"
-module_maker="ModuleBuildTiny"
+name = 'SD-OpenAPI'
+module_maker = 'ModuleBuild'
 script_files = ['script/*']
+
+[tap_harness_args]
+lib = [ 't/lib', 'lib' ]
+
 [release]
-  do_not_upload_to_cpan=true
+do_not_upload_to_cpan = true
