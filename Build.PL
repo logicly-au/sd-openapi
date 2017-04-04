@@ -4,9 +4,83 @@
 # =========================================================================
 
 use 5.008_001;
+
 use strict;
+use warnings;
+use utf8;
 
-use Module::Build::Tiny 0.035;
+use Module::Build;
+use File::Basename;
+use File::Spec;
 
-Build_PL();
+my %args = (
+    license              => 'perl_5',
+    dynamic_config       => 0,
+
+    configure_requires => {
+        'Module::Build' => '0.4005',
+    },
+
+    requires => {
+        'Class::Load' => '0',
+        'Clone' => '0',
+        'Data::Dumper::Concise' => '0',
+        'DateTime::Format::ISO8601' => '0',
+        'Digest::MD5' => '0',
+        'Function::Parameters' => '0',
+        'JSON::MaybeXS' => '0',
+        'JSON::Validator' => '0',
+        'Log::Any' => '0',
+        'Moo' => '0',
+        'MooX::Options' => '0',
+        'Path::Tiny' => '0',
+        'Try::Tiny' => '0',
+        'YAML::XS' => '0',
+        'perl' => 'v5.22.0',
+    },
+
+    recommends => {
+    },
+
+    suggests => {
+    },
+
+    build_requires => {
+    },
+
+    test_requires => {
+        'Plack::Test' => '0',
+        'SD::Test' => '0',
+    },
+
+    name            => 'SD-OpenAPI',
+    module_name     => 'SD::OpenAPI',
+    allow_pureperl => 0,
+
+    script_files => [glob('script/*')],
+    c_source     => [qw()],
+    PL_files => {},
+
+    test_files           => ((-d '.git' || $ENV{RELEASE_TESTING}) && -d 'xt') ? 't/ xt/' : 't/',
+    recursive_test_files => 1,
+
+    tap_harness_args => {"lib" => ["t/lib","lib"]},
+
+);
+if (-d 'share') {
+    $args{share_dir} = 'share';
+}
+
+my $builder = Module::Build->subclass(
+    class => 'MyBuilder',
+    code => q{
+        sub ACTION_distmeta {
+            die "Do not run distmeta. Install Minilla and `minil install` instead.\n";
+        }
+        sub ACTION_installdeps {
+            die "Do not run installdeps. Run `cpanm --installdeps .` instead.\n";
+        }
+    }
+)->new(%args);
+$builder->create_build_script();
 

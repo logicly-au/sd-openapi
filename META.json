@@ -28,7 +28,7 @@
    "prereqs" : {
       "configure" : {
          "requires" : {
-            "Module::Build::Tiny" : "0.035"
+            "Module::Build" : "0.4005"
          }
       },
       "develop" : {
@@ -73,7 +73,7 @@
          "url" : "git://gh.sdintra.net/StrategicData/SD-OpenAPI.git"
       }
    },
-   "version" : "0.0.21",
+   "version" : "0.0.22",
    "x_contributors" : [
       "Adam Clarke <adamc@strategicdata.com.au>",
       "Adam Clarke <adam.clarke@strategicdata.com.au>",
