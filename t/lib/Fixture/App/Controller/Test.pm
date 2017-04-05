@@ -12,4 +12,11 @@ method get($app: $params, $metadata) {
     };
 }
 
+method put($app: $params, $metadata) {
+    return {
+        params => $params,
+        metadata => $metadata,
+    };
+}
+
 1;
