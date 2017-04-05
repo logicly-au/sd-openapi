@@ -267,11 +267,18 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
 %type_check = (
     integer => sub {
         my ($value, $type, $name) = @_;
+        my $min = $type->{minimum};
+        my $max = $type->{maximum};
+
         if ($value =~ /^[-+]?\d+$/) {
-            return int($value);
+            $value = int($value);
+            if ($value >= $min && $value <= $max) {
+                return $value;
+            }
         }
-        die { $name => 'must be an integer' };
+        die { $name => "must be an integer in range [$min, $max]" };
     },
+
     string => sub {
         my ($value, $type, $name) = @_;
         if (defined $value) {
@@ -279,6 +286,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         }
         die { $name => 'must be a string value' };
     },
+
     boolean => sub {
         my ($value, $type, $name) = @_;
         if (
@@ -290,6 +298,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         }
         die { $name => "must be a boolean value" };
     },
+
     date => sub {
         my ($value, $type, $name) = @_;
         try {
@@ -300,6 +309,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         };
         return $value;
     },
+
     'date-time' => sub {
         my ($value, $type, $name) = @_;
         try {
@@ -310,6 +320,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         };
         return $value;
     },
+
     range => sub {
         my ($value, $type, $name) = @_;
         if (my ($low, $high) = ($value =~ /^(\d+)-(\d+)?$/)) {
@@ -319,6 +330,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         }
         die { $name => "must be a range (eg. 500-599, or 100-)" };
     },
+
     sort => sub {
         my ($value, $type, $name) = @_;
 
@@ -332,6 +344,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         }
         die { $name => $type->{error_message} };
     },
+
     array => sub {
         my ($value, $type, $name) = @_;
         my $itemtype = $type->{items}->{check_type};
@@ -355,6 +368,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         die \%errors if keys %errors;
         return \@ret;
     },
+
     object => sub {
         my ($value, $type, $name) = @_;
         if (ref $value ne 'HASH') {
@@ -406,6 +420,15 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     },
 );
 
+fun max_value($bits) {
+    return (2 ** ($bits - 1)) - 1;
+}
+
+my %limit = (
+    int32 => { min => -max_value(32) - 1, max => max_value(32) },
+    int64 => { min => -max_value(64) - 1, max => max_value(64) },
+);
+
 # Recursively assign types to the parameters. The swagger params use a two-level
 # hierarchy for the types. We create a single 'check_type' key which maps to
 # the correct handler in the %type_check table.
@@ -413,13 +436,21 @@ fun assign_type($spec) {
     if ((exists $spec->{format}) && (exists $type_check{ $spec->{format} })) {
         $spec->{check_type} = $spec->{format};
     }
-    elsif ((exists $spec->{type}) && (exists $type_check{ $spec->{type} })) {
+    elsif (exists $type_check{ $spec->{type} }) {
         $spec->{check_type} = $spec->{type};
     }
     else {
         $log->error("Can't match type for $spec->{name}");
         #use Data::Dumper::Concise; print STDERR "MISSING: ", Dumper($spec);
         $spec->{type} = $spec->{check_type} = 'string';
+    }
+
+    if ($spec->{check_type} eq 'integer') {
+        $spec->{format} //= 'int32';
+
+        my $limit = $limit{ $spec->{format} };
+        $spec->{minimum} //= $limit->{min};
+        $spec->{maximum} //= $limit->{max};
     }
 
     if ($spec->{check_type} eq 'sort') {
