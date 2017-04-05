@@ -381,7 +381,14 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
             }
 
             if (!defined $value->{$field_name}) {
-                $errors{$key} = "null field $field_name";
+                if ($field_type->{'x-nullable'}) {
+                    $ret{$field_name} = undef;
+                }
+                else {
+                    $errors{$key} = "null field $field_name";
+                }
+
+                # In all cases we can skip to the next field.
                 next;
             }
 
