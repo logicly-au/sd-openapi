@@ -185,24 +185,9 @@ method make_handler($metadata) {
     # Install type checkers for all the types.
     # Do this ahead of time so we only need to check it all once. At run-time
     # we can assume this is all correct.
-    my $default_type = 'string';
     for my $p (@{ $metadata->{parameters} }) {
         assign_type($p);
-
-        # Similarly, validate and check any default values early.
-        if (exists $p->{default}) {
-            my $check = $type_check{$p->{check_type}};
-            try {
-                $p->{default_value} =
-                        $check->($p->{default}, $p, $p->{name} . '.default');
-            }
-            catch {
-                while (my ($field, $error) = each %$_) {
-                    $log->error("$field: $error");
-                    #XXX: die here?
-                }
-            };
-        }
+        assign_default($p, $p->{name});
     }
 
     # Wrap the handler $sub in parameter validation/inflation code.
@@ -225,7 +210,7 @@ method make_handler($metadata) {
             my @vals = $get_param->($app->request, $name);
 
             if (@vals == 0) {
-                $errors{$name} = "parameter $name not specified"
+                $errors{$name} = "missing parameter $name"
                     if $p->{required};
 
                 if (exists $p->{default_value}) {
@@ -351,7 +336,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         my ($value, $type, $name) = @_;
         my $itemtype = $type->{items}->{check_type};
         if (ref $value ne 'ARRAY') {
-            die { $name => "must be an array of $itemtype" };
+            die { $name => "must be a JSON-formatted array of $itemtype" };
         }
 
         my $check = $type_check{$itemtype};
@@ -373,7 +358,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
     object => sub {
         my ($value, $type, $name) = @_;
         if (ref $value ne 'HASH') {
-            die { $name => "must be an object" };
+            die { $name => "must be a JSON-formatted object" };
         }
 
         my %ret;
@@ -381,11 +366,22 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
         while (my ($field_name, $field_type) = each %{ $type->{properties} }) {
             my $key = "$name\.$field_name";
 
-            # required fields must exist and be defined.
-            # non-required fields are skipped over if missing or undef
-            if (!exists $value->{$field_name} || !defined $value->{$field_name}) {
-                $errors{$key} = "missing required field $field_name"
-                    if $field_type->{required};
+            if (!exists $value->{$field_name}) {
+                if (exists $field_type->{default_value}) {
+                    # This is already validated and inflated. Copy it and move
+                    # on to the next parameter. We don't need to fall through.
+                    $ret{$field_name} = $field_type->{default_value};
+                }
+                elsif ($field_type->{required}) {
+                    $errors{$key} = "missing field $field_name";
+                }
+
+                # In all cases we can skip to the next field.
+                next;
+            }
+
+            if (!defined $value->{$field_name}) {
+                $errors{$key} = "null field $field_name";
                 next;
             }
 
@@ -445,6 +441,31 @@ fun assign_type($spec) {
     }
     elsif ($spec->{check_type} eq 'object') {
         assign_type($_) for values %{ $spec->{properties} };
+    }
+}
+
+fun assign_default($spec, $name) {
+    if (exists $spec->{default}) {
+        my $check = $type_check{$spec->{check_type}};
+        try {
+            $spec->{default_value} =
+                $check->($spec->{default}, $spec, $name . '.default');
+        }
+        catch {
+            while (my ($field, $error) = each %$_) {
+                $log->error("$field: $error");
+                #XXX: die here?
+            }
+        };
+    }
+
+    if ($spec->{check_type} eq 'array') {
+        assign_default($spec->{items}, $name);
+    }
+    elsif ($spec->{check_type} eq 'object') {
+        while (my ($key, $value) = each %{ $spec->{properties} }) {
+            assign_default($value, "$name.$key");
+        }
     }
 }
 
