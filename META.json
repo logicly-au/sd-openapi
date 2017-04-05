@@ -44,6 +44,7 @@
          "requires" : {
             "Class::Load" : "0",
             "Clone" : "0",
+            "Dancer2" : "0",
             "Data::Dumper::Concise" : "0",
             "DateTime::Format::ISO8601" : "0",
             "Digest::MD5" : "0",
@@ -82,5 +83,5 @@
       "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
       "Stephen Thirlwall <stephent@strategicdata.com.au>"
    ],
-   "x_serialization_backend" : "JSON::PP version 2.27300"
+   "x_serialization_backend" : "JSON::PP version 2.27300_01"
 }

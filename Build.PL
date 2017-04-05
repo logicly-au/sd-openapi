@@ -24,6 +24,7 @@ my %args = (
     requires => {
         'Class::Load' => '0',
         'Clone' => '0',
+        'Dancer2' => '0',
         'Data::Dumper::Concise' => '0',
         'DateTime::Format::ISO8601' => '0',
         'Digest::MD5' => '0',
