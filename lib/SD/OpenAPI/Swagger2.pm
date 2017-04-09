@@ -29,6 +29,13 @@ fun expand_swagger($swagger) {
     _hoist_schemas($swagger);
     _merge_allofs($swagger);
 
+    # Post-expansion internal validation
+    my @errors = _validate_params($swagger);
+    if (@errors) {
+        my $errors = join("\n", @errors);
+        die "$errors\n";
+    }
+
     return $swagger;
 }
 
@@ -116,6 +123,94 @@ fun _merge_allofs($root) {
 
         delete $object->{allOf};
     });
+}
+
+fun _validate_params($swagger) {
+    my @errors;
+    my $paths = $swagger->{paths};
+    for my $path (keys %$paths) {
+        while (my ($method, $handler) = each %{ $paths->{$path} }) {
+            push(@errors, _validate_path_params($method, $path, $handler));
+            push(@errors, _validate_body_params($method, $path, $handler));
+        }
+    }
+    return @errors;
+}
+
+fun _validate_handler_params($method, $path, $handler) {
+    my @path_parameters = ($path =~ /{(.*?)}/g);
+    if (@path_parameters) {
+        local $, = ', ';
+        say "$path: @path_parameters";
+    }
+}
+
+fun _validate_path_params($method, $path, $handler) {
+    my @errors;
+    my $prefix = "$method $path";
+
+    my @path_parameters = ($path =~ /{(.*?)}/g);
+    my @params = @{ $handler->{parameters} // [ ] };
+    for my $name (@path_parameters) {
+        my @matching_params = grep { $_->{name} eq $name } @params;
+        if (!@matching_params) {
+            push(@errors,
+                "$prefix: path parameter \"$name\" not in parameter list");
+            next;
+        }
+
+        my ($path_param) = grep { $_->{in} eq 'path' } @params;
+        if (!defined $path_param) {
+            my $types = join(', ', map { $_->{in} } @matching_params);
+            push(@errors,
+                "$prefix: path parameter \"$name\" in $types, not in path");
+            next;
+        }
+
+        if (! $path_param->{required}) {
+            # JSON::Validator catches this.
+            push(@errors,
+                "$prefix: path parameter \"$name\" cannot be optional");
+            next;
+        }
+    }
+
+    for my $param (@params) {
+        next unless $param->{in} eq 'path';
+        my $name = $param->{name};
+        if ($path !~ /{$name}/) {
+            push(@errors,
+                "$prefix: path parameter \"$name\" not in path");
+        }
+    }
+
+    return @errors;
+}
+
+fun _validate_body_params($method, $path, $handler) {
+    my $prefix = "$method $path";
+
+    my @body_parameters = grep { $_->{in} eq 'body' }
+                               @{ $handler->{parameters } };
+    return ( ) unless @body_parameters;
+
+    if ($method eq 'get') {
+        return ("$prefix: body parameters not allowed in $method request");
+    }
+
+    if (@body_parameters > 1) {
+        return ("$prefix: only one body parameter allowed");
+    }
+
+    my @errors;
+    my ($body) = @body_parameters;
+
+    if ($body->{name} ne 'body') {
+        push(@errors,
+            "body parameters must be named \"body\", not \"$body->{name}\"");
+    }
+
+    return @errors;
 }
 
 1;
