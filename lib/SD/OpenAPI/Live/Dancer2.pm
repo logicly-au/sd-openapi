@@ -281,10 +281,12 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
 
     string => sub {
         my ($value, $type, $name) = @_;
-        if (defined $value) {
-            return "$value";
+        $value = "$value";
+        my $length = length($value);
+        if ($length >= $type->{minLength} && $length <= $type->{maxLength}) {
+            return $value;
         }
-        die { $name => 'must be a string value' };
+        die { $name => $type->{msg} };
     },
 
     boolean => sub {
@@ -451,6 +453,26 @@ fun assign_type($spec) {
         my $limit = $limit{ $spec->{format} };
         $spec->{minimum} //= $limit->{min};
         $spec->{maximum} //= $limit->{max};
+    }
+
+    if ($spec->{check_type} eq 'string') {
+        if (exists $spec->{minLength}) {
+            if (exists $spec->{maxLength}) {
+                $spec->{msg} = "must be a string between $spec->{minLength} and $spec->{maxLength} characters long";
+            }
+            else {
+                $spec->{msg} = "must be a string at least $spec->{minLength} characters long";
+            }
+        }
+        elsif (exists $spec->{maxLength}) {
+            $spec->{msg} = "must be a string of no more than $spec->{maxLength} characters";
+        }
+        else {
+            $spec->{msg} = 'must be a string';
+        }
+
+        $spec->{minLength} //= 0;
+        $spec->{maxLength} //= 2 * 1024 * 1024 * 1024; # that oughta do it...
     }
 
     if ($spec->{check_type} eq 'sort') {
