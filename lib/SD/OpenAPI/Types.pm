@@ -93,7 +93,7 @@ fun check_integer($value, $type, $name) {
             return $value;
         }
     }
-    die { $name => "must be an integer in range [$min, $max]" };
+    die { $name => $type->{msg} };
 }
 
 fun check_object($value, $type, $name) {
@@ -207,6 +207,17 @@ fun assign_type($spec) {
 
     if ($spec->{check_type} eq 'integer') {
         $spec->{format} //= 'int32';
+        $spec->{msg} = "must be an $spec->{format}";
+
+        if (exists $spec->{minimum} && exists $spec->{maximum}) {
+            $spec->{msg} .= " in range [$spec->{minimum}, $spec->{maximum}]";
+        }
+        elsif (exists $spec->{minimum}) {
+            $spec->{msg} .= " no less than $spec->{minimum}";
+        }
+        elsif (exists $spec->{maximum}) {
+            $spec->{msg} .= " no greater than $spec->{minimum}";
+        }
 
         my $limit = $limit{ $spec->{format} };
         $spec->{minimum} //= $limit->{min};
