@@ -18,7 +18,7 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
 # This table contains handlers to check and inflate the incoming types.
 # In assign_type we set a check_type field in each type. This field matches
 # the keys below.
-my %type_check = (
+my %check_type_table = (
     array       => \&check_array,
     boolean     => \&check_boolean,
     date        => \&check_date,
@@ -36,7 +36,7 @@ fun check_array($value, $type, $name) {
         die { $name => "must be a JSON-formatted array of $itemtype" };
     }
 
-    my $check = $type_check{$itemtype};
+    my $check = $check_type_table{$itemtype};
 
     # Collect any errors further down and propagate them up
     my @ret;
@@ -132,7 +132,7 @@ fun check_object($value, $type, $name) {
             next;
         }
 
-        my $check = $type_check{ $field_type->{check_type} };
+        my $check = $check_type_table{ $field_type->{check_type} };
         try {
             $ret{$field_name} =
                 $check->($value->{$field_name}, $field_type, $key);
@@ -176,7 +176,7 @@ fun check_string($value, $type, $name) {
 }
 
 fun check_type($value, $type, $name) {
-    my $checker = $type_check{ $type->{check_type} };
+    my $checker = $check_type_table{ $type->{check_type} };
     return $checker->($value, $type, $name);
 }
 
@@ -191,12 +191,13 @@ my %limit = (
 
 # Recursively assign types to the parameters. The swagger params use a two-level
 # hierarchy for the types. We create a single 'check_type' key which maps to
-# the correct handler in the %type_check table.
+# the correct handler in %check_type_table.
 fun assign_type($spec) {
-    if ((exists $spec->{format}) && (exists $type_check{ $spec->{format} })) {
+    if ((exists $spec->{format})
+            && (exists $check_type_table{ $spec->{format} })) {
         $spec->{check_type} = $spec->{format};
     }
-    elsif (exists $type_check{ $spec->{type} }) {
+    elsif (exists $check_type_table{ $spec->{type} }) {
         $spec->{check_type} = $spec->{type};
     }
     else {
@@ -275,7 +276,7 @@ fun assign_type($spec) {
 
 fun assign_default($spec, $name) {
     if (exists $spec->{default}) {
-        my $check = $type_check{$spec->{check_type}};
+        my $check = $check_type_table{$spec->{check_type}};
         try {
             $spec->{default_value} =
                 $check->($spec->{default}, $spec, $name . '.default');
