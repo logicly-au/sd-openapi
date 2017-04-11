@@ -18,164 +18,162 @@ my $datetime_parser = DateTime::Format::ISO8601->new;
 # This table contains handlers to check and inflate the incoming types.
 # In assign_type we set a check_type field in each type. This field matches
 # the keys below.
-my %type_check;
-%type_check = (
-    integer => sub {
-        my ($value, $type, $name) = @_;
-        my $min = $type->{minimum};
-        my $max = $type->{maximum};
+my %type_check = (
+    array       => \&check_array,
+    boolean     => \&check_boolean,
+    date        => \&check_date,
+    'date-time' => \&check_datetime,
+    integer     => \&check_integer,
+    object      => \&check_object,
+    range       => \&check_range,
+    sort        => \&check_sort,
+    string      => \&check_string,
+);
 
-        if ($value =~ /^[-+]?\d+$/) {
-            $value = int($value);
-            if ($value >= $min && $value <= $max) {
-                return $value;
-            }
+fun check_array($value, $type, $name) {
+    my $itemtype = $type->{items}->{check_type};
+    if (ref $value ne 'ARRAY') {
+        die { $name => "must be a JSON-formatted array of $itemtype" };
+    }
+
+    my $check = $type_check{$itemtype};
+
+    # Collect any errors further down and propagate them up
+    my @ret;
+    my %errors;
+    while (my ($index, $item) = each @$value) {
+        try {
+            push(@ret, $check->($item, $type->{items}, "$name\[$index\]"));
         }
-        die { $name => "must be an integer in range [$min, $max]" };
-    },
+        catch {
+            @errors{ keys %$_ } = values %$_;
+        };
+    }
+    die \%errors if keys %errors;
+    return \@ret;
+};
 
-    string => sub {
-        my ($value, $type, $name) = @_;
-        $value = "$value";
-        my $length = length($value);
-        if ($length >= $type->{minLength} && $length <= $type->{maxLength}) {
+fun check_boolean($value, $type, $name) {
+    # Value may come from body json in which case we need is_bool, or it
+    # may come from header/query/path where it will be a plain string.
+    if (is_bool($value) || ($value =~ /^0|false|1|true$/)) {
+        return 0 if $value eq 'false';  # special case for 'false'
+        return $value ? 1 : 0;          # this works better with postgres
+    }
+    die { $name => "must be a boolean value" };
+}
+
+fun check_date($value, $type, $name) {
+    try {
+        $value = $datetime_parser->parse_datetime($value);
+    }
+    catch {
+        die { $name => "must be an ISO8601-formatted date string" };
+    };
+    return $value;
+};
+
+fun check_datetime($value, $type, $name) {
+    try {
+        $value = $datetime_parser->parse_datetime($value);
+    }
+    catch {
+        die { $name => "must be an ISO8601-formatted datetime string" };
+    };
+    return $value;
+}
+
+fun check_integer($value, $type, $name) {
+    my $min = $type->{minimum};
+    my $max = $type->{maximum};
+
+    if ($value =~ /^[-+]?\d+$/) {
+        $value = int($value);
+        if ($value >= $min && $value <= $max) {
             return $value;
         }
-        die { $name => $type->{msg} };
-    },
+    }
+    die { $name => "must be an integer in range [$min, $max]" };
+}
 
-    boolean => sub {
-        my ($value, $type, $name) = @_;
-        if (
-            is_bool($value) ||              # decoded body params
-            ($value =~ /^0|false|1|true$/)  # query params are strings
-        ) {
-            return 0 if $value eq 'false';  # special case false, other cases are logical
-            return $value ? 1 : 0; # this works better with postgres
+fun check_object($value, $type, $name) {
+    if (ref $value ne 'HASH') {
+        die { $name => "must be a JSON-formatted object" };
+    }
+
+    my %ret;
+    my %errors;
+    while (my ($field_name, $field_type) = each %{ $type->{properties} }) {
+        my $key = "$name\.$field_name";
+
+        if (!exists $value->{$field_name}) {
+            if (exists $field_type->{default_value}) {
+                # This is already validated and inflated. Copy it and move
+                # on to the next parameter. We don't need to fall through.
+                $ret{$field_name} = $field_type->{default_value};
+            }
+            elsif ($field_type->{required}) {
+                $errors{$key} = "missing field $field_name";
+            }
+
+            # In all cases we can skip to the next field.
+            next;
         }
-        die { $name => "must be a boolean value" };
-    },
 
-    date => sub {
-        my ($value, $type, $name) = @_;
+        if (!defined $value->{$field_name}) {
+            if ($field_type->{'x-nullable'}) {
+                $ret{$field_name} = undef;
+            }
+            else {
+                $errors{$key} = "null field $field_name";
+            }
+
+            # In all cases we can skip to the next field.
+            next;
+        }
+
+        my $check = $type_check{ $field_type->{check_type} };
         try {
-            $value = $datetime_parser->parse_datetime($value);
+            $ret{$field_name} =
+                $check->($value->{$field_name}, $field_type, $key);
         }
         catch {
-            die { $name => "must be an ISO8601-formatted date string" };
+            @errors{ keys %$_ } = values %$_;
         };
+    }
+    die \%errors if keys %errors;
+    return \%ret;
+}
+
+fun check_range($value, $type, $name) {
+    if (my ($low, $high) = ($value =~ /^(\d+)-(\d+)?$/)) {
+        if ((!defined $high) || ($low <= $high)) {
+            return [ $low, $high ];
+        }
+    }
+    die { $name => "must be a range (eg. 0-599, or 100-)" };
+}
+
+fun check_sort($value, $type, $name) {
+    if ($value =~ $type->{pattern}) {
+        # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
+        # The sign is optional, and defaults to plus. Note that the regex
+        # below deliberately makes the sign non-optional. If we match, we
+        # have an explicit sign, otherwise we have no sign.
+        return [ map { /^([+-])(.*)$/ ? [ $1, $2 ] : [ '+', $_ ] }
+                    split(/,/, $value) ];
+    }
+    die { $name => $type->{error_message} };
+}
+
+fun check_string($value, $type, $name) {
+    $value = "$value";
+    my $length = length($value);
+    if ($length >= $type->{minLength} && $length <= $type->{maxLength}) {
         return $value;
-    },
-
-    'date-time' => sub {
-        my ($value, $type, $name) = @_;
-        try {
-            $value = $datetime_parser->parse_datetime($value);
-        }
-        catch {
-            die { $name => "must be an ISO8601-formatted datetime string" };
-        };
-        return $value;
-    },
-
-    range => sub {
-        my ($value, $type, $name) = @_;
-        if (my ($low, $high) = ($value =~ /^(\d+)-(\d+)?$/)) {
-            if ((!defined $high) || ($low <= $high)) {
-                return [ $low, $high ];
-            }
-        }
-        die { $name => "must be a range (eg. 500-599, or 100-)" };
-    },
-
-    sort => sub {
-        my ($value, $type, $name) = @_;
-
-        if ($value =~ $type->{pattern}) {
-            # [ [ '+', 'foo' ], [ '-', 'bar' ] ]
-            # The sign is optional, and defaults to plus. Note that the regex
-            # below deliberately makes the sign non-optional. If we match, we
-            # have an explicit sign, otherwise we have no sign.
-            return [ map { /^([+-])(.*)$/ ? [ $1, $2 ] : [ '+', $_ ] }
-                       split(/,/, $value) ];
-        }
-        die { $name => $type->{error_message} };
-    },
-
-    array => sub {
-        my ($value, $type, $name) = @_;
-        my $itemtype = $type->{items}->{check_type};
-        if (ref $value ne 'ARRAY') {
-            die { $name => "must be a JSON-formatted array of $itemtype" };
-        }
-
-        my $check = $type_check{$itemtype};
-
-        # Collect any errors further down and propagate them up
-        my @ret;
-        my %errors;
-        while (my ($index, $item) = each @$value) {
-            try {
-                push(@ret, $check->($item, $type->{items}, "$name\[$index\]"));
-            }
-            catch {
-                @errors{ keys %$_ } = values %$_;
-            };
-        }
-        die \%errors if keys %errors;
-        return \@ret;
-    },
-
-    object => sub {
-        my ($value, $type, $name) = @_;
-        if (ref $value ne 'HASH') {
-            die { $name => "must be a JSON-formatted object" };
-        }
-
-        my %ret;
-        my %errors;
-        while (my ($field_name, $field_type) = each %{ $type->{properties} }) {
-            my $key = "$name\.$field_name";
-
-            if (!exists $value->{$field_name}) {
-                if (exists $field_type->{default_value}) {
-                    # This is already validated and inflated. Copy it and move
-                    # on to the next parameter. We don't need to fall through.
-                    $ret{$field_name} = $field_type->{default_value};
-                }
-                elsif ($field_type->{required}) {
-                    $errors{$key} = "missing field $field_name";
-                }
-
-                # In all cases we can skip to the next field.
-                next;
-            }
-
-            if (!defined $value->{$field_name}) {
-                if ($field_type->{'x-nullable'}) {
-                    $ret{$field_name} = undef;
-                }
-                else {
-                    $errors{$key} = "null field $field_name";
-                }
-
-                # In all cases we can skip to the next field.
-                next;
-            }
-
-            my $check = $type_check{ $field_type->{check_type} };
-            try {
-                $ret{$field_name} =
-                    $check->($value->{$field_name}, $field_type, $key);
-            }
-            catch {
-                @errors{ keys %$_ } = values %$_;
-            };
-        }
-        die \%errors if keys %errors;
-        return \%ret;
-    },
-);
+    }
+    die { $name => $type->{msg} };
+}
 
 fun check_type($value, $type, $name) {
     my $checker = $type_check{ $type->{check_type} };
