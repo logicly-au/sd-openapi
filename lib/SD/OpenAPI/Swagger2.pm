@@ -49,12 +49,13 @@ fun _expand_references($swagger) {
 # This function walks the swagger tree, calling $f on each item it finds.
 # The items may be hashes, arrays or scalars. Note that $f gets called
 # after the recursive call, so $f will be applied bottom-up.
-fun _walk_tree($object, $f) {
+fun _walk_tree($object, $f, $seen = { }) {
+    return if $seen->{$object}++;
     if (ref $object eq 'ARRAY') {
-        _walk_tree($_, $f) for @$object;
+        _walk_tree($_, $f, $seen) for @$object;
     }
     elsif (ref $object eq 'HASH') {
-        _walk_tree($_, $f) for values %$object;
+        _walk_tree($_, $f, $seen) for values %$object;
     }
     $f->($object);
 }
