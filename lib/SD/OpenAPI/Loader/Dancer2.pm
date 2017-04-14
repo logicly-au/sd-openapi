@@ -33,7 +33,7 @@ method filename_for_class($class) {
     return $self->location . q{/} . $class . q{.pm};
 }
 
-method _parse_routes {
+method _parse_routes() {
     my $paths = $self->spec->{paths};
 
     my $routes = {};

@@ -21,13 +21,13 @@ has swagger => (
 
 has plack_test => (
     is => 'lazy',
-    builder => method {
+    builder => method() {
         return Plack::Test->create(Fixture::App->generate($self->swagger));
     },
 );
 
 # Evilly monkey-patch a json decoding method into HTTP::Response
-*{HTTP::Response::json} = method {
+*{HTTP::Response::json} = method() {
     return $self->{'***json***'} //= eval { $json->decode($self->content) };
 };
 

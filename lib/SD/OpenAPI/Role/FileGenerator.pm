@@ -14,7 +14,7 @@ my $LF   = "\x0a";
 
 requires 'version';
 
-method class { return ref $self || $self }
+method class() { return ref $self || $self }
 
 # Writes out content to a file without md5 marker
 method write_file( :$filename, :$content, :$overwrite = 0) {
