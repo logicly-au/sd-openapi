@@ -24,7 +24,7 @@ fun validate_swagger($swagger) {
 }
 
 fun expand_swagger($swagger) {
-    $swagger = _expand_references($swagger);
+    _expand_references($swagger);
     _merge_required($swagger);
     _hoist_schemas($swagger);
     _merge_allofs($swagger);
@@ -40,16 +40,49 @@ fun expand_swagger($swagger) {
 }
 
 fun _expand_references($swagger) {
-    # I had code to do this, but JSON::Validator can do it for us. Win!
-    my $validator = JSON::Validator->new;
-    $validator->schema($swagger);
-    return $validator->schema->data;
+    my $definitions = $swagger->{definitions};
+    my $refkey = '$ref';
+
+    # I originally wrote my own giant clunky piece of code to do this, then
+    # realised JSON::Validator could do it for me, and then realised their
+    # code had issues allowing bad swagger through, so I've now replaced that
+    # code with this. The circle is complete. For now.
+
+    _walk_tree($swagger, fun($object) {
+        return unless ref $object eq 'HASH';
+        return unless exists $object->{$refkey};
+
+        # I"m working on the assumption that references are always like this:
+        #   { '$ref' => "#/definitions/$name" }
+        # ie. always in a hash as the only pair
+
+        if (keys %$object > 1) {
+            use Data::Dumper::Concise; print STDERR Dumper($object);
+            die "Found '\$ref' in a hash with other items\n";
+        }
+
+        my $value = $object->{$refkey};
+        if ($value !~ m{^#/definitions/(.*)}) {
+            die "Bad definition string \"$value\"\n";
+        }
+        my $name = $1;
+
+        die "Definition for \"$name\" not found\n"
+            unless exists $definitions->{$name};
+
+        %$object = %{ $definitions->{$name} };
+    });
 }
 
 # This function walks the swagger tree, calling $f on each item it finds.
 # The items may be hashes, arrays or scalars. Note that $f gets called
 # after the recursive call, so $f will be applied bottom-up.
 fun _walk_tree($object, $f, $seen = { }) {
+    # This $seen hash was to avoid an infinite recursion that was caused by
+    # JSON::Validator allowing malformed references in. I'm going to leave this
+    # in for now, but I suspect it is no longer necessary.
+    # It may be needed in the case that swagger allows recursive structures.
+    # eg. a Person definition could conceivably contain a sub-array of Persons
     return if $seen->{$object}++;
     if (ref $object eq 'ARRAY') {
         _walk_tree($_, $f, $seen) for @$object;
