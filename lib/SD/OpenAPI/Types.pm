@@ -171,11 +171,25 @@ fun check_sort($value, $type, $name) {
 
 fun check_string($value, $type, $name) {
     $value = "$value";
-    my $length = length($value);
-    if ($length >= $type->{minLength} && $length <= $type->{maxLength}) {
-        return $value;
+
+    try {
+        if (exists $type->{pattern}) {
+            die unless $value =~ $type->{pattern};
+        }
+
+        my $length = length($value);
+        if (exists $type->{minLength}) {
+            die unless $length >= $type->{minLength};
+        }
+
+        if (exists $type->{maxLength}) {
+            die unless $length <= $type->{maxLength};
+        }
     }
-    die { $name => $type->{msg} };
+    catch {
+        die { $name => $type->{msg} };
+    };
+    return $value;
 }
 
 fun check_type($value, $type, $name) {
@@ -276,7 +290,11 @@ fun assign_type_sort($spec) {
 fun assign_type_string($spec) {
     $spec->{msg} = 'must be a string';
 
-    if (exists $spec->{minLength} && exists $spec->{maxLength}) {
+    if (exists $spec->{pattern}) {
+        $spec->{msg} .= " matching /$spec->{pattern}/";
+        $spec->{pattern} = qr/$spec->{pattern}/;
+    }
+    elsif (exists $spec->{minLength} && exists $spec->{maxLength}) {
         $spec->{msg} .= " between $spec->{minLength} and $spec->{maxLength} characters long";
     }
     elsif (exists $spec->{minLength}) {
