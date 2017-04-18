@@ -65,13 +65,13 @@ fun check_boolean($value, $type, $name) {
 }
 
 fun check_date($value, $type, $name) {
-    try {
-        $value = $datetime_parser->parse_datetime($value);
+    if (my ($yyyy, $mm, $dd) = ($value =~ /^(\d{4})-(\d{2})-(\d{2})$/)) {
+        my $date = try {
+            DateTime->new(year => $yyyy, month => $mm, day => $dd)
+        };
+        return $date if defined $date;
     }
-    catch {
-        die { $name => "must be an ISO8601-formatted date string" };
-    };
-    return $value;
+    die { $name => 'must be a YYYY-MM-DD date string' };
 };
 
 fun check_datetime($value, $type, $name) {
