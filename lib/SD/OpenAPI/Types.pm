@@ -246,21 +246,29 @@ fun assign_type_array($spec) {
 
 fun assign_type_integer($spec) {
     $spec->{format} //= 'int32';
-    $spec->{msg} = "must be an $spec->{format}";
-
-    if (exists $spec->{minimum} && exists $spec->{maximum}) {
-        $spec->{msg} .= " in range [$spec->{minimum}, $spec->{maximum}]";
-    }
-    elsif (exists $spec->{minimum}) {
-        $spec->{msg} .= " no less than $spec->{minimum}";
-    }
-    elsif (exists $spec->{maximum}) {
-        $spec->{msg} .= " no greater than $spec->{maximum}";
-    }
+    $spec->{msg} =
+        integer_message($spec->{format}, $spec->{minimum}, $spec->{maximum});
 
     my $limit = $limit{ $spec->{format} };
     $spec->{minimum} //= $limit->{min};
     $spec->{maximum} //= $limit->{max};
+
+    if ($spec->{minimum} > $spec->{maximum}) {
+        die { $spec->{name} => 'minimum value is greater than maximum value' };
+    }
+}
+
+fun integer_message($format, $min, $max) {
+    my $msg = "must be an $format";
+
+    if (defined $min) {
+        return (defined $max) ? "$msg in range [$min, $max]"
+                              : "$msg no less than $min";
+    }
+    else {
+        return (defined $max) ? "$msg no greater than $max"
+                              : $msg;
+    }
 }
 
 fun assign_type_object($spec) {
