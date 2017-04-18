@@ -241,7 +241,7 @@ fun assign_type_integer($spec) {
         $spec->{msg} .= " no less than $spec->{minimum}";
     }
     elsif (exists $spec->{maximum}) {
-        $spec->{msg} .= " no greater than $spec->{minimum}";
+        $spec->{msg} .= " no greater than $spec->{maximum}";
     }
 
     my $limit = $limit{ $spec->{format} };
