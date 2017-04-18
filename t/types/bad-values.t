@@ -6,7 +6,27 @@ use SD::OpenAPI::Types  qw( check_type prepare_handler );
 
 my @bad_values = (
     {
-        type     => { type => 'integer' },
+        type    => { type => 'string', minLength => 3 },
+        message => 'must be a string at least 3 characters long',
+        values  => ['', qw( a ab )],
+    },
+    {
+        type    => { type => 'string', maxLength => 8 },
+        message => 'must be a string of no more than 8 characters',
+        values  => [qw( abcdefghi abcdefghij )],
+    },
+    {
+        type    => { type => 'string', minLength => 3, maxLength => 8 },
+        message => 'must be a string between 3 and 8 characters long',
+        values  => ['', qw( a ab abcdefghi abcdefghij )],
+    },
+    {
+        type    => { type => 'string', maxLength => 8 },
+        message => 'must be a string of no more than 8 characters',
+        values  => [qw( abcdefghi abcdefghij )],
+    },
+    {
+        type    => { type => 'integer' },
         message => 'must be an int32',
         values => [
             '', qw( xxx x3 3x 3.14 -2147483649 +2147483648 2147483648)
