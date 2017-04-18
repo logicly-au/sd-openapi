@@ -1,6 +1,5 @@
 use SD::Test;
 use Function::Parameters    qw( :strict   );
-use Test::Fatal             qw( exception );
 use JSON::MaybeXS;
 
 use SD::OpenAPI::Types  qw( check_type prepare_handler );
@@ -14,6 +13,26 @@ my @good_values = (
         values => [
             [ '' => '' ],
             [ 'hello' => 'hello' ],
+        ],
+    },
+    {
+        type     => { type => 'string', minLength => 3, maxLength => 5 },
+        values => [
+            [ 'abc' => 'abc' ],
+            [ 'abcd' => 'abcd' ],
+            [ 'abcde' => 'abcde' ],
+        ],
+    },
+    {
+        type     => { type => 'string', pattern => '^a?b+c*$' },
+        values => [
+            [ 'abc' => 'abc' ],
+            [ 'ab' => 'ab' ],
+            [ 'b' => 'b' ],
+            [ 'abbbccc' => 'abbbccc' ],
+            [ 'abccc' => 'abccc' ],
+            [ 'bbccc' => 'bbccc' ],
+            [ 'bccc' => 'bccc' ],
         ],
     },
     {

@@ -26,6 +26,11 @@ my @bad_values = (
         values  => [qw( abcdefghi abcdefghij )],
     },
     {
+        message => 'must be a string matching /^a?b+c*$/',
+        type    => { type => 'string', pattern => '^a?b+c*$' },
+        values  => ['', qw( aab cccba abbccd )],
+    },
+    {
         type    => { type => 'integer' },
         message => 'must be an int32',
         values => [
