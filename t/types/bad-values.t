@@ -31,6 +31,11 @@ my @bad_values = (
         values  => ['', qw( aab cccba abbccd )],
     },
     {
+        message => 'must be a string in the list: foo, bar',
+        type    => { type => 'string', enum => [qw( foo bar )] },
+        values  => ['', 'foo-not', 'not-foo', 'bar-not', 'not-bar' ],
+    },
+    {
         type    => { type => 'integer' },
         message => 'must be an int32',
         values => [

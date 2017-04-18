@@ -36,6 +36,13 @@ my @good_values = (
         ],
     },
     {
+        type     => { type => 'string', enum => [qw( foo bar )] },
+        values => [
+            [ 'foo'    => 'foo' ],
+            [ 'bar'    => 'bar' ],
+        ],
+    },
+    {
         type     => { type => 'integer' },
         values => [
             [ '123'   => 123 ],
