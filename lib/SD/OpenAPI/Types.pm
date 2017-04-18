@@ -290,7 +290,15 @@ fun assign_type_sort($spec) {
 fun assign_type_string($spec) {
     $spec->{msg} = 'must be a string';
 
-    if (exists $spec->{pattern}) {
+    if (exists $spec->{enum}) {
+        my @values = @{ $spec->{enum} };
+        local $" = ', ';
+        $spec->{msg} .= " in the list: @values";
+
+        my $pattern = join('|', map { quotemeta } @values);
+        $spec->{pattern} = qr/^(?:$pattern)$/;
+    }
+    elsif (exists $spec->{pattern}) {
         $spec->{msg} .= " matching /$spec->{pattern}/";
         $spec->{pattern} = qr/$spec->{pattern}/;
     }
