@@ -5,6 +5,7 @@ use warnings;
 use DateTime::Format::ISO8601   qw( );
 use Log::Any                    qw( $log );
 use JSON::MaybeXS               qw( is_bool );
+use Math::BigInt                qw( );
 use Try::Tiny;
 
 use Exporter qw( import );
@@ -84,13 +85,15 @@ fun check_datetime($value, $type, $name) {
 }
 
 fun check_integer($value, $type, $name) {
-    my $min = $type->{minimum};
-    my $max = $type->{maximum};
-
     if ($value =~ /^[-+]?\d+$/) {
-        $value = int($value);
-        if ($value >= $min && $value <= $max) {
-            return $value;
+        # Convert to big int for range checks so that very large values don't
+        # overflow and slip through.
+        my $big_value = Math::BigInt->new($value);
+        if (($big_value->bcmp($type->{minimum}) >= 0)
+             && ($big_value->bcmp($type->{maximum}) <= 0)) {
+
+            # Once we're done with the BigInt checks, just return a regular int.
+            return int($value);
         }
     }
     die { $name => $type->{msg} };
@@ -180,13 +183,15 @@ fun check_type($value, $type, $name) {
     return $checker->($value, $type, $name);
 }
 
-fun max_int($bits) {
-    return (2 ** ($bits - 1)) - 1;
-}
-
 my %limit = (
-    int32 => { min => -max_int(32) - 1, max => max_int(32) },
-    int64 => { min => -max_int(64) - 1, max => max_int(64) },
+    int32 => {
+        min => Math::BigInt->new('-0x8000_0000'),
+        max => Math::BigInt->new('+0x7fff_ffff'),
+    },
+    int64 => {
+        min => Math::BigInt->new('-0x8000_0000_0000_0000'),
+        max => Math::BigInt->new('+0x7fff_ffff_ffff_ffff'),
+    },
 );
 
 my %assign_type_table = (
