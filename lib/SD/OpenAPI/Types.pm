@@ -189,6 +189,14 @@ my %limit = (
     int64 => { min => -max_int(64) - 1, max => max_int(64) },
 );
 
+my %assign_type_table = (
+    array       => \&assign_type_array,
+    integer     => \&assign_type_integer,
+    object      => \&assign_type_object,
+    sort        => \&assign_type_sort,
+    string      => \&assign_type_string,
+);
+
 # Recursively assign types to the parameters. The swagger params use a two-level
 # hierarchy for the types. We create a single 'check_type' key which maps to
 # the correct handler in %check_type_table.
@@ -206,72 +214,75 @@ fun assign_type($spec) {
         $spec->{type} = $spec->{check_type} = 'string';
     }
 
-    if ($spec->{check_type} eq 'integer') {
-        $spec->{format} //= 'int32';
-        $spec->{msg} = "must be an $spec->{format}";
+    if (my $assigner = $assign_type_table{ $spec->{check_type} }) {
+        $assigner->($spec);
+    }
+}
 
-        if (exists $spec->{minimum} && exists $spec->{maximum}) {
-            $spec->{msg} .= " in range [$spec->{minimum}, $spec->{maximum}]";
-        }
-        elsif (exists $spec->{minimum}) {
-            $spec->{msg} .= " no less than $spec->{minimum}";
-        }
-        elsif (exists $spec->{maximum}) {
-            $spec->{msg} .= " no greater than $spec->{minimum}";
-        }
+fun assign_type_array($spec) {
+    # All the items are of the same type, so we only need to descend once,
+    # unlike check_type_array which needs to check each item.
+    assign_type($spec->{items});
+}
 
-        my $limit = $limit{ $spec->{format} };
-        $spec->{minimum} //= $limit->{min};
-        $spec->{maximum} //= $limit->{max};
+fun assign_type_integer($spec) {
+    $spec->{format} //= 'int32';
+    $spec->{msg} = "must be an $spec->{format}";
+
+    if (exists $spec->{minimum} && exists $spec->{maximum}) {
+        $spec->{msg} .= " in range [$spec->{minimum}, $spec->{maximum}]";
+    }
+    elsif (exists $spec->{minimum}) {
+        $spec->{msg} .= " no less than $spec->{minimum}";
+    }
+    elsif (exists $spec->{maximum}) {
+        $spec->{msg} .= " no greater than $spec->{minimum}";
     }
 
-    if ($spec->{check_type} eq 'string') {
-        if (exists $spec->{minLength}) {
-            if (exists $spec->{maxLength}) {
-                $spec->{msg} = "must be a string between $spec->{minLength} and $spec->{maxLength} characters long";
-            }
-            else {
-                $spec->{msg} = "must be a string at least $spec->{minLength} characters long";
-            }
-        }
-        elsif (exists $spec->{maxLength}) {
-            $spec->{msg} = "must be a string of no more than $spec->{maxLength} characters";
-        }
-        else {
-            $spec->{msg} = 'must be a string';
-        }
+    my $limit = $limit{ $spec->{format} };
+    $spec->{minimum} //= $limit->{min};
+    $spec->{maximum} //= $limit->{max};
+}
 
-        $spec->{minLength} //= 0;
-        $spec->{maxLength} //= 2 * 1024 * 1024 * 1024; # that oughta do it...
+fun assign_type_object($spec) {
+    # Recursively assign the type of all the properties of the object.
+    assign_type($_) for values %{ $spec->{properties} };
+}
+
+fun assign_type_sort($spec) {
+    # Build up the regex that matches the sort spec ahead of time.
+    # If we have an array of x-sort-fields, use those specifically,
+    # otherwise default to \w+.
+    $spec->{msg} = 'must be a comma-separated list of field/+field/-field';
+
+    my $sign  = qr/[-+]/;
+    my $ident = qr/\w+/;    # default case if no sort fields specified
+    if (my $sort_fields = $spec->{'x-sort-fields'}) {
+        my $pattern = join('|', map { quotemeta } sort @$sort_fields);
+        $ident = qr/(?:$pattern)/;
+
+        $spec->{msg} .= '. Valid fields are: ' .
+            join(', ', sort @$sort_fields);
+    }
+    my $term = qr/($sign)?($ident)/;
+    $spec->{pattern} = qr/^$term(?:,$term)*$/;
+}
+
+fun assign_type_string($spec) {
+    $spec->{msg} = 'must be a string';
+
+    if (exists $spec->{minLength} && exists $spec->{maxLength}) {
+        $spec->{msg} .= " between $spec->{minLength} and $spec->{maxLength} characters long";
+    }
+    elsif (exists $spec->{minLength}) {
+        $spec->{msg} .= " at least $spec->{minLength} characters long";
+    }
+    elsif (exists $spec->{maxLength}) {
+        $spec->{msg} .= " of no more than $spec->{maxLength} characters";
     }
 
-    if ($spec->{check_type} eq 'sort') {
-        # Build up the regex that matches the sort spec ahead of time.
-        # If we have an array of x-sort-fields, use those specifically,
-        # otherwise default to \w+.
-        $spec->{msg} =
-            'must be a comma-separated list of field/+field/-field';
-        my $sign  = qr/[-+]/;
-        my $ident = qr/\w+/;    # default case if no sort fields specified
-        if (my $sort_fields = $spec->{'x-sort-fields'}) {
-            my $pattern = join('|', map { quotemeta } sort @$sort_fields);
-            $ident = qr/(?:$pattern)/;
-
-            $spec->{msg} .= '. Valid fields are: ' .
-                join(', ', sort @$sort_fields);
-        }
-        my $term = qr/($sign)?($ident)/;
-        $spec->{pattern} = qr/^$term(?:,$term)*$/;
-
-        # TODO: we could replace or augment the description field to list the available sort fields
-    }
-
-    if ($spec->{check_type} eq 'array') {
-        assign_type($spec->{items});
-    }
-    elsif ($spec->{check_type} eq 'object') {
-        assign_type($_) for values %{ $spec->{properties} };
-    }
+    $spec->{minLength} //= 0;
+    $spec->{maxLength} //= 2 * 1024 * 1024 * 1024; # that oughta do it...
 }
 
 fun assign_default($spec, $name) {
