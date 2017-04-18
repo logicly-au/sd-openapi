@@ -300,7 +300,13 @@ fun assign_type_string($spec) {
     }
     elsif (exists $spec->{pattern}) {
         $spec->{msg} .= " matching /$spec->{pattern}/";
-        $spec->{pattern} = qr/$spec->{pattern}/;
+        try {
+            $spec->{pattern} = qr/$spec->{pattern}/;
+        }
+        catch {
+            $_ =~ s/\s*;.*$//s; # trim down the error message a bit
+            die { $spec->{name} . '.pattern' => $_ };
+        };
     }
     elsif (exists $spec->{minLength} && exists $spec->{maxLength}) {
         $spec->{msg} .= " between $spec->{minLength} and $spec->{maxLength} characters long";
@@ -311,24 +317,13 @@ fun assign_type_string($spec) {
     elsif (exists $spec->{maxLength}) {
         $spec->{msg} .= " of no more than $spec->{maxLength} characters";
     }
-
-    $spec->{minLength} //= 0;
-    $spec->{maxLength} //= 2 * 1024 * 1024 * 1024; # that oughta do it...
 }
 
 fun assign_default($spec, $name) {
     if (exists $spec->{default}) {
         my $check = $check_type_table{$spec->{check_type}};
-        try {
-            $spec->{default_value} =
+        $spec->{default_value} =
                 $check->($spec->{default}, $spec, $name . '.default');
-        }
-        catch {
-            while (my ($field, $error) = each %$_) {
-                $log->error("$field: $error");
-                #XXX: die here?
-            }
-        };
     }
 
     if ($spec->{check_type} eq 'array') {
@@ -345,10 +340,17 @@ fun assign_default($spec, $name) {
 # Do this ahead of time so we only need to check it all once. At run-time
 # we can assume this is all correct.
 fun prepare_handler($metadata) {
+    my @errors;
     for my $p (@{ $metadata->{parameters} }) {
-        assign_type($p);
-        assign_default($p, $p->{name});
+        try {
+            assign_type($p);
+            assign_default($p, $p->{name});
+        }
+        catch {
+            push(@errors, $_);
+        };
     }
+    die \@errors if @errors;
 }
 
 1;
