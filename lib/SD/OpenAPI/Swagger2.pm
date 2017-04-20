@@ -40,7 +40,6 @@ fun expand_swagger($swagger) {
 }
 
 fun _expand_references($swagger) {
-    my $definitions = $swagger->{definitions};
     my $refkey = '$ref';
 
     # I originally wrote my own giant clunky piece of code to do this, then
@@ -62,15 +61,20 @@ fun _expand_references($swagger) {
         }
 
         my $value = $object->{$refkey};
-        if ($value !~ m{^#/definitions/(.*)}) {
-            die "Bad definition string \"$value\"\n";
+        if ($value !~ m{^#/([^/]+)/(.+)}) {
+            die "Bad reference string \"$value\"\n";
         }
-        my $name = $1;
+        my $field = $1;
+        my $name = $2;
 
-        die "Definition for \"$name\" not found\n"
-            unless exists $definitions->{$name};
+        die "Field \"$field\" not found\n"
+            unless exists $swagger->{$field};
 
-        %$object = %{ $definitions->{$name} };
+        my $fields = $swagger->{$field};
+        die "$field for \"$name\" not found\n"
+            unless exists $fields->{$name};
+
+        %$object = %{ $fields->{$name} };
     });
 }
 
