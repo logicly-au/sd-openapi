@@ -128,6 +128,9 @@ my @good_values = (
             [ '2017-02-03T04:05:06Z'
                 => DateTime->new(year => 2017, month => 2, day => 3,
                     hour => 4, minute => 5, second => 6) ],
+            [ '2017-02-03T04:05:06+10:00'
+                => DateTime->new(year => 2017, month => 2, day => 3,
+                    hour => 4, minute => 5, second => 6, time_zone => 'Australia/Brisbane') ],
         ],
     },
 );
