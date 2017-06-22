@@ -67,11 +67,15 @@ fun check_boolean($value, $type, $name) {
 fun check_date($value, $type, $name) {
     if (my ($yyyy, $mm, $dd) = ($value =~ /^(\d{4})-(\d{2})-(\d{2})$/)) {
         my $date = try {
+            if (exists $type->{pattern}) {
+                die unless $value =~ $type->{pattern};
+            }
+
             DateTime->new(year => $yyyy, month => $mm, day => $dd)
         };
         return $date if defined $date;
     }
-    die { $name => 'must be a YYYY-MM-DD date string' };
+    die { $name => $type->{msg} };
 };
 
 fun check_datetime($value, $type, $name) {
