@@ -103,6 +103,15 @@ my @bad_values = (
         )],
     },
     {
+        type    => { type => 'date', pattern => '^(?:19|2\d)\d\d' },
+        message => 'must be a YYYY-MM-DD date string matching /^(?:19|2\d)\d\d/',
+        # Note that invalid days fail, eg. Feb 30
+        values  => ['', qw(
+            2017-02-29 2017-13-01 2017/01/01 2017-31-12 Monday
+            2017-01-01T12:00:00Z  1700-01-01 3000-01-01
+        )],
+    },
+    {
         type    => { type => 'date-time' },
         message => 'must be an ISO8601-formatted datetime string',
         # Note that invalid days fail, eg. Feb 30

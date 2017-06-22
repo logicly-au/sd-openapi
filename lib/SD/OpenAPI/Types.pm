@@ -67,11 +67,15 @@ fun check_boolean($value, $type, $name) {
 fun check_date($value, $type, $name) {
     if (my ($yyyy, $mm, $dd) = ($value =~ /^(\d{4})-(\d{2})-(\d{2})$/)) {
         my $date = try {
+            if (exists $type->{pattern}) {
+                die unless $value =~ $type->{pattern};
+            }
+
             DateTime->new(year => $yyyy, month => $mm, day => $dd)
         };
         return $date if defined $date;
     }
-    die { $name => 'must be a YYYY-MM-DD date string' };
+    die { $name => $type->{msg} };
 };
 
 fun check_datetime($value, $type, $name) {
@@ -210,6 +214,7 @@ my %limit = (
 
 my %assign_type_table = (
     array       => \&assign_type_array,
+    date        => \&assign_type_date,
     integer     => \&assign_type_integer,
     object      => \&assign_type_object,
     sort        => \&assign_type_sort,
@@ -242,6 +247,21 @@ fun assign_type_array($spec) {
     # All the items are of the same type, so we only need to descend once,
     # unlike check_type_array which needs to check each item.
     assign_type($spec->{items});
+}
+
+fun assign_type_date($spec) {
+    $spec->{msg} = 'must be a YYYY-MM-DD date string';
+
+    if (exists $spec->{pattern}) {
+        $spec->{msg} .= " matching /$spec->{pattern}/";
+        try {
+            $spec->{pattern} = qr/$spec->{pattern}/;
+        }
+        catch {
+            $_ =~ s/\s*;.*$//s; # trim down the error message a bit
+            die { $spec->{name} . '.pattern' => $_ };
+        };
+    }
 }
 
 fun assign_type_integer($spec) {
