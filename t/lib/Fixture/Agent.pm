@@ -46,6 +46,10 @@ method get($path, $header = undef) {
     $self->request(GET => $path, undef, $header);
 }
 
+method head($path, $header = undef) {
+    $self->request(HEAD => $path, undef, $header);
+}
+
 method delete($path, $header = undef) {
     $self->request(DELETE => $path, undef, $header);
 }
