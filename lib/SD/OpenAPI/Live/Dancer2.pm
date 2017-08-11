@@ -131,7 +131,7 @@ method add_route($app, $metadata) {
 
     # If the request is a GET, add a HEAD with the same args.
     if ($metadata->{http_method} eq 'get') {
-        $args{http_method} = 'head';
+        $args{method} = 'head';
         $app->add_route(%args);
     }
 }
