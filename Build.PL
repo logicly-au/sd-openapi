@@ -50,8 +50,10 @@ my %args = (
     },
 
     test_requires => {
+        'Import::Into' => '0',
         'Plack::Test' => '0',
-        'SD::Test' => '0',
+        'Test::FailWarnings' => '0',
+        'Test::Most' => '0',
     },
 
     name            => 'SD-OpenAPI',

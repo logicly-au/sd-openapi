@@ -1,4 +1,4 @@
-use SD::Test;
+use SD::OpenAPI::Test;
 use SD::OpenAPI::Live::Dancer2 qw( );
 use Function::Parameters qw( :strict );
 use Clone qw( clone );

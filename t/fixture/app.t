@@ -1,4 +1,4 @@
-use SD::Test;
+use SD::OpenAPI::Test;
 use Fixture::App;
 
 my $swagger = {

@@ -4,7 +4,7 @@
       "Strategic Data <support@strategicdata.com.au>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.0.10, CPAN::Meta::Converter version 2.150005",
+   "generated_by" : "Minilla/v3.0.13, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -62,8 +62,10 @@
       },
       "test" : {
          "requires" : {
+            "Import::Into" : "0",
             "Plack::Test" : "0",
-            "SD::Test" : "0"
+            "Test::FailWarnings" : "0",
+            "Test::Most" : "0"
          }
       }
    },
@@ -76,12 +78,12 @@
    },
    "version" : "0.0.32",
    "x_contributors" : [
-      "Adam Clarke <adamc@strategicdata.com.au>",
       "Adam Clarke <adam.clarke@strategicdata.com.au>",
+      "Adam Clarke <adamc@strategicdata.com.au>",
+      "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
       "Russell Jenkins <veryrusty@gmail.com>",
       "Stephen Thirlwall <stephen.thirlwall@strategicdata.com.au>",
-      "Russell Jenkins <russell.jenkins@strategicdata.com.au>",
       "Stephen Thirlwall <stephent@strategicdata.com.au>"
    ],
-   "x_serialization_backend" : "JSON::PP version 2.27300_01"
+   "x_serialization_backend" : "JSON::PP version 2.27400_02"
 }

@@ -19,6 +19,8 @@ requires $_ for qw(
 );
 
 on 'test' => sub {
-    requires 'SD::Test';
+    requires 'Import::Into';
     requires 'Plack::Test';
+    requires 'Test::FailWarnings';
+    requires 'Test::Most';
 };
