@@ -155,11 +155,19 @@ my %param_method = (
 );
 
 method make_handler($metadata) {
-    my $package = join('::',
-        $self->namespace,
-        'Controller',
-        $metadata->{module_name},
-    );
+    my $package;
+	# Allow module names to be "+-prefixed fully qualified",
+	# otherwise assume the prefix is ${namespace}::Controller
+    if ($metadata->{module_name} =~ /^\+(.*)$/ ) {
+        $package = $1;
+    }
+    else {
+        $package = join('::',
+            $self->namespace,
+            'Controller',
+            $metadata->{module_name},
+        );
+    }
 
     load_class($package);
     my $sub = $package->can($metadata->{sub_name});
@@ -315,3 +323,4 @@ extra C<$result> parameter which is the return value from the route handler.
 The hook code is free to modify this C<$result> object.
 
 =cut
+
