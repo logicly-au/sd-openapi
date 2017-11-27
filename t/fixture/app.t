@@ -18,6 +18,16 @@ my $swagger = {
                 },
             },
         },
+        '/fully/qualified' => {
+            get => {
+                operationId => '+Fixture::App::Controller::Test::get',
+                responses => {
+                    200 => {
+                        description => 'ok',
+                    },
+                },
+            },
+        },
     },
 };
 
