@@ -73,7 +73,7 @@ fun check_date($value, $type, $name) {
 
             DateTime->new(year => $yyyy, month => $mm, day => $dd)
         };
-        return $date if defined $date;
+        return _date_time_bounds($date, $type, $name) if defined $date;
     }
     die { $name => $type->{msg} };
 };
@@ -85,6 +85,24 @@ fun check_datetime($value, $type, $name) {
     catch {
         die { $name => "must be an ISO8601-formatted datetime string" };
     };
+
+    return _date_time_bounds($value, $type, $name);
+}
+
+fun _date_time_bounds($value, $type, $name) {
+    # The downside of now wanting to specify the limits on the date objects we support..
+    my $out_of_bounds = 0;
+    if (defined $type->{minimum} && defined $type->{maximum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{minimum}) < 0) ||
+                         (DateTime->compare($value, $type->{maximum}) > 0);
+    }
+    elsif (defined $type->{minimum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{minimum}) < 0);
+    }
+    elsif (defined $type->{maximum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{maximum}) > 0);
+    }
+    die { $name => $type->{msg} } if $out_of_bounds;
     return $value;
 }
 
