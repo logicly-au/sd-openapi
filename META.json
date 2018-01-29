@@ -4,13 +4,13 @@
       "Strategic Data <support@strategicdata.com.au>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.0.13, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "Minilla/v3.0.14, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
+      "version" : 2
    },
    "name" : "SD-OpenAPI",
    "no_index" : {
@@ -56,7 +56,7 @@
             "MooX::Options" : "0",
             "Path::Tiny" : "0",
             "Try::Tiny" : "0",
-            "YAML::XS" : "0",
+            "YAML::XS" : "0.67",
             "perl" : "v5.22.0"
          }
       },
@@ -76,7 +76,7 @@
          "url" : "git://gh.sdintra.net/StrategicData/SD-OpenAPI.git"
       }
    },
-   "version" : "0.0.32",
+   "version" : "0.0.33",
    "x_contributors" : [
       "Adam Clarke <adam.clarke@strategicdata.com.au>",
       "Adam Clarke <adamc@strategicdata.com.au>",
@@ -85,5 +85,5 @@
       "Stephen Thirlwall <stephen.thirlwall@strategicdata.com.au>",
       "Stephen Thirlwall <stephent@strategicdata.com.au>"
    ],
-   "x_serialization_backend" : "JSON::PP version 2.27400_02"
+   "x_serialization_backend" : "JSON::PP version 2.97001"
 }

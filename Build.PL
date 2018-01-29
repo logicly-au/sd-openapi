@@ -36,7 +36,7 @@ my %args = (
         'MooX::Options' => '0',
         'Path::Tiny' => '0',
         'Try::Tiny' => '0',
-        'YAML::XS' => '0',
+        'YAML::XS' => '0.67',
         'perl' => 'v5.22.0',
     },
 
