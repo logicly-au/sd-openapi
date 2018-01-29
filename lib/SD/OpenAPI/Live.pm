@@ -26,6 +26,8 @@ has swagger => (
             unless $self->has_swagger_path;
 
         my $content = path($self->swagger_path)->slurp_utf8;
+        # unquoted 'true' => perl !0
+        local $YAML::XS::Boolean = 'JSON::PP';
         return ($content =~ /^\s*\{/s)
             ? JSON::MaybeXS::decode_json($content)
             : YAML::XS::Load($content);
