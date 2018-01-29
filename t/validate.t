@@ -2,10 +2,11 @@ use SD::OpenAPI::Test;
 use SD::OpenAPI::Live::Dancer2 qw( );
 use Function::Parameters qw( :strict );
 use Clone qw( clone );
+use JSON::PP qw();
 
-# Swagger is being rather picky about boolean values.
-my $true = (2 + 2 == 4);
-my $false = !$true;
+# Swagger rather picky about boolean values.
+my $true  = JSON::PP::true;
+my $false = JSON::PP::false;
 
 my $path_param = 'bar';
 my $path = "/foo/{$path_param}";

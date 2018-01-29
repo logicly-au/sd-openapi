@@ -15,8 +15,10 @@ requires $_ for qw(
     MooX::Options
     Path::Tiny
     Try::Tiny
-    YAML::XS
 );
+
+# minimum version of YAML::XS - for $YAML::XS::Boolean support
+requires 'YAML::XS', '0.67';
 
 on 'test' => sub {
     requires 'Import::Into';
