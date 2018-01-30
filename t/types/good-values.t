@@ -119,6 +119,13 @@ my @good_values = (
         ],
     },
     {
+        type    => { type => 'date', 'x-minimum' => '2016-07-01', 'x-maximum' => '2017-06-30' },
+        values  => [
+            [ '2017-02-03'
+                => DateTime->new(year => 2017, month => 2, day => 3) ],
+        ],
+    },
+    {
         type    => { type => 'date-time' },
         values  => [
             [ '2017-02-03'

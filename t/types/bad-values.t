@@ -103,6 +103,22 @@ my @bad_values = (
         )],
     },
     {
+        type    => { type => 'date', 'x-minimum' => '2016-07-01' },
+        message => 'must be a YYYY-MM-DD date string not before 2016-07-01',
+        # Note that invalid days fail, eg. Feb 30
+        values  => [ '2016-02-03', '2017-02-29' ],
+    },
+    {
+        type    => { type => 'date', 'x-maximum' => '2017-06-30' },
+        message => 'must be a YYYY-MM-DD date string not after 2017-06-30',
+        values  => [ '2017-11-11', '2017-02-29' ],
+    },
+    {
+        type    => { type => 'date', 'x-minimum' => '2016-07-01', 'x-maximum' => '2017-06-30' },
+        message => 'must be a YYYY-MM-DD date string in range [2016-07-01, 2017-06-30]',
+        values  => [ '2016-02-03', '2017-11-11', '2017-02-29' ],
+    },
+    {
         type    => { type => 'date', pattern => '^(?:19|2\d)\d\d' },
         message => 'must be a YYYY-MM-DD date string matching /^(?:19|2\d)\d\d/',
         # Note that invalid days fail, eg. Feb 30

@@ -73,7 +73,7 @@ fun check_date($value, $type, $name) {
 
             DateTime->new(year => $yyyy, month => $mm, day => $dd)
         };
-        return $date if defined $date;
+        return _date_time_bounds($date, $type, $name) if defined $date;
     }
     die { $name => $type->{msg} };
 };
@@ -85,6 +85,24 @@ fun check_datetime($value, $type, $name) {
     catch {
         die { $name => "must be an ISO8601-formatted datetime string" };
     };
+
+    return _date_time_bounds($value, $type, $name);
+}
+
+fun _date_time_bounds($value, $type, $name) {
+    # The downside of now wanting to specify the limits on the date objects we support..
+    my $out_of_bounds = 0;
+    if (defined $type->{minimum} && defined $type->{maximum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{minimum}) < 0) ||
+                         (DateTime->compare($value, $type->{maximum}) > 0);
+    }
+    elsif (defined $type->{minimum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{minimum}) < 0);
+    }
+    elsif (defined $type->{maximum}) {
+        $out_of_bounds = (DateTime->compare($value, $type->{maximum}) > 0);
+    }
+    die { $name => $type->{msg} } if $out_of_bounds;
     return $value;
 }
 
@@ -250,7 +268,10 @@ fun assign_type_array($spec) {
 }
 
 fun assign_type_date($spec) {
-    $spec->{msg} = 'must be a YYYY-MM-DD date string';
+    $spec->{msg} = date_message($spec->{'x-minimum'}, $spec->{'x-maximum'});
+    for (qw/minimum maximum/) {
+        $spec->{$_} = $datetime_parser->parse_datetime($spec->{"x-$_"}) if defined $spec->{"x-$_"};
+    }
 
     if (exists $spec->{pattern}) {
         $spec->{msg} .= " matching /$spec->{pattern}/";
@@ -261,6 +282,19 @@ fun assign_type_date($spec) {
             $_ =~ s/\s*;.*$//s; # trim down the error message a bit
             die { $spec->{name} . '.pattern' => $_ };
         };
+    }
+}
+
+fun date_message($min, $max) {
+    my $msg = 'must be a YYYY-MM-DD date string';
+
+    if (defined $min) {
+        return (defined $max) ? "$msg in range [$min, $max]"
+                              : "$msg not before $min";
+    }
+    else {
+        return (defined $max) ? "$msg not after $max"
+                              : $msg;
     }
 }
 
