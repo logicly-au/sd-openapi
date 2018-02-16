@@ -5,6 +5,7 @@ use warnings;
 
 use Exporter                qw( import );
 use JSON::Validator         qw( );
+use Clone                   qw( clone );
 
 use Function::Parameters    qw( :strict );
 
@@ -25,6 +26,7 @@ fun validate_swagger($swagger) {
 
 fun expand_swagger($swagger) {
     _expand_references($swagger);
+    _expand_security($swagger);
     _merge_required($swagger);
     _hoist_schemas($swagger);
     _merge_allofs($swagger);
@@ -76,6 +78,62 @@ fun _expand_references($swagger) {
 
         %$object = %{ $fields->{$name} };
     });
+}
+
+# This method decorates every method/path with the global security
+# settings and then calls _expand_security_schemes to copy settings
+# from the top level security definitions into each path/method
+fun _expand_security($swagger){
+    return unless $swagger->{securityDefinitions};
+
+    my $global_security = $swagger->{security};
+
+    foreach my $path ( keys %{ $swagger->{paths} } ) {
+
+        foreach my $method ( values %{ $swagger->{paths}{$path} } ) {
+            next unless $method->{security} || $global_security;
+
+            # Inherit global security
+            $method->{security} //= $global_security;
+
+            _expand_security_schemes( $swagger, $path, $method );
+        }
+    }
+}
+
+# Given a path/method that has a 'security' parameter, this method
+# expands that into the full security configuration copied from the
+# top level securityDefinitions. In the case where there's scope in
+# the path/method's security setting, the copying of data from the top
+# level only includes relevant scopes.
+fun _expand_security_schemes($swagger, $path, $method) {
+
+    my $security_definitions = $swagger->{securityDefinitions};
+
+
+    foreach my $security_option ( @{ $method->{security} } ) {
+        my $expanded_options = {};
+
+        my @security_schemes = keys %{ $security_option };
+
+        foreach my $scheme ( @security_schemes ){
+            if( ! exists $security_definitions->{$scheme} ){
+                die("Unknown security definition '$scheme' used in $path\n");
+            }
+            $expanded_options->{$scheme} = clone $security_definitions->{$scheme};
+
+            if( ref $expanded_options->{$scheme}{scopes} eq 'HASH' ){
+                $expanded_options->{$scheme}{scopes} = [
+                    grep {
+                        exists $expanded_options->{$scheme}{scopes}{$_}
+                    } @{$security_option->{$scheme}}
+                ];
+            }
+        }
+
+        push( @{ $method->{security_expanded} }, $expanded_options );
+    }
+
 }
 
 # This function walks the swagger tree, calling $f on each item it finds.
