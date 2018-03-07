@@ -50,6 +50,7 @@ my %args = (
     },
 
     test_requires => {
+        'Hash::Merge' => '0',
         'Import::Into' => '0',
         'Plack::Test' => '0',
         'Test::FailWarnings' => '0',

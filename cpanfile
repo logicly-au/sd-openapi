@@ -21,8 +21,11 @@ requires $_ for qw(
 requires 'YAML::XS', '0.67';
 
 on 'test' => sub {
-    requires 'Import::Into';
-    requires 'Plack::Test';
-    requires 'Test::FailWarnings';
-    requires 'Test::Most';
+    requires $_ for qw(
+        Hash::Merge
+        Import::Into
+        Plack::Test
+        Test::FailWarnings
+        Test::Most
+    );
 };
